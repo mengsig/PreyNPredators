@@ -1,35 +1,45 @@
 const std = @import("std");
-
-const PREY_ENERGY_GAIN: f16 = 2.5;
-const PREDATOR_ENERGY_GAIN: f16 = PREY_ENERGY_GAIN * 10.0;
-const DEFAULT_ENERGY_LOSS: f16 = 1.0;
-const ENERGY_SCALE_LOSS: f16 = 1.0;
-const DEFAULT_DIGESTION_RATE: f16 = 0.1;
-const SIZE: f16 = 1.0;
-const DT: f16 = 1.0;
+const c = @cImport({
+    @cInclude("SDL2/SDL.h");
+});
+const cstd = @cImport({@cInclude("stdio.h");});
+const GRID_SIZE:u32 = 1500;
+const TOTAL_SIZE: u32 = GRID_SIZE*GRID_SIZE;
+const CELL_SIZE: i8 = 1;
+const WINDOW_SIZE: i32 = CELL_SIZE*GRID_SIZE;
+const PREY_ENERGY_GAIN: f32 = 2.5;
+const PREDATOR_ENERGY_GAIN: f32 = PREY_ENERGY_GAIN * 10.0;
+const DEFAULT_ENERGY_LOSS: f32 = 1.0;
+const ENERGY_SCALE_LOSS: f32 = 1.0;
+const DEFAULT_DIGESTION_RATE: f32 = 0.1;
+const SIZE: f32 = 1.0;
+const DT: f32 = 1.0;
 const AGENTNO: u16 = 100;
-
+const RADUIS: f32 = 1.0;
 const Species = enum {
     prey,
     predator,
 };
 
+
+
+
 const agent = struct {
     species: Species,
-    posx: f16,
-    posy: f16,
-    velx: f16,
-    vely: f16,
-    speed: f16,
-    energy: f16,
-    split: f16,
-    digestion: f16,
+    posx: f32,
+    posy: f32,
+    velx: f32,
+    vely: f32,
+    speed: f32,
+    energy: f32,
+    split: f32,
+    digestion: f32,
     is_child: bool,
     is_dead: bool,
 
     const Self = @This();
 
-    pub fn init(species: Species, posx: f16, posy: f16, velx: f16, vely: f16, speed: f16, energy: f16, split: f16, digestion: f16, is_child: bool, is_dead: bool) agent {
+    pub fn init(species: Species, posx: f32, posy: f32, velx: f32, vely: f32, speed: f32, energy: f32, split: f32, digestion: f32, is_child: bool, is_dead: bool) agent {
         return agent{
             .species = species,
             .posx = posx,
@@ -96,6 +106,25 @@ pub fn initialize(array: *[AGENTNO]agent) void {
 }
 
 pub fn main() !void {
+    if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
+        c.SDL_Log("Unable to initialize SDL: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    }
+    defer c.SDL_Quit();
+
+    const screen = c.SDL_CreateWindow("My Game Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, WINDOW_SIZE, WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse
+    {
+        c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer c.SDL_DestroyWindow(screen);
+
+    const renderer = c.SDL_CreateRenderer(screen, -1, c.SDL_RENDERER_ACCELERATED) orelse {
+        c.SDL_Log("Unable to create renderer: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer c.SDL_DestroyRenderer(renderer);
+
     var testPredator = agent.init(Species.predator, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, true, false);
     var testPrey = agent.init(Species.prey, 0.0, 0.0, 0.5, -1.0, 0.0, 0.0, 0.0, 0.0, true, false);
     var ourArray: [AGENTNO]agent = undefined;
@@ -121,4 +150,56 @@ pub fn main() !void {
     std.debug.print("{}\n", .{testPrey.is_dead});
     std.debug.print("{}\n", .{testPrey.posx});
     std.debug.print("{}\n", .{testPrey.posy});
+
+    while (true) {
+        for(0..AGENTNO) |i|{
+            if(ourArray[i].is_dead == false){
+                _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
+                _ = c.SDL_RenderClear(renderer);
+                switch (ourArray[i].species) {
+                    Species.predator => {
+                        _ = c.SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF); //Red;
+                    },
+                    Species.prey => {
+                        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xFF, 0xFF); //Green
+                    },
+                }
+                DrawCircle(renderer, ourArray[i].posx+20, ourArray[i].posy+20, RADUIS*10);
+                //DrawCircle(renderer,  10,10,2);
+                _ = c.SDL_RenderPresent(renderer);
+
+            }
+        }
+    }
+}
+
+pub fn  DrawCircle(renderer: *c.SDL_Renderer,centerX: f32,centerY: f32,radius: f32) void {
+    // Using the Midpoint Circle Algorithm
+    var x: i32 = @intFromFloat(radius);
+    var y: i32 = 0;
+    var p: i32 = 1 - @as(i32, @intFromFloat(radius));
+
+    // Draw the initial point on each octant
+    while (x > y) {
+        y += 1;
+
+        if (p <= 0) {
+            p = p + 2 * y + 1;
+        } else {
+            x -=1;
+            p = p + 2 * y - 2 * x + 1;
+        }
+
+        // Draw points in all eight octants
+        const centerX1: i32 = @intFromFloat(centerX);
+        const centerY1: i32 = @intFromFloat(centerY);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + x, centerY1 + y);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - x, centerY1 + y);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + x, centerY1 - y);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - x, centerY1 - y);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + y, centerY1 + x);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - y, centerY1 + x);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + y, centerY1 - x);
+        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - y, centerY1 - x);
+    }
 }
