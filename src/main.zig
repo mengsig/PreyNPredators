@@ -1,5 +1,5 @@
 const std = @import("std");
-
+const MIKKELSERSJOVUD: u1 = 1;
 const PREY_ENERGY_GAIN: f16 = 2.5;
 const PREDATOR_ENERGY_GAIN: f16 = PREY_ENERGY_GAIN * 10.0;
 const DEFAULT_ENERGY_LOSS: f16 = 1.0;
@@ -100,9 +100,6 @@ pub fn main() !void {
     var testPrey = agent.init(Species.prey, 0.0, 0.0, 0.5, -1.0, 0.0, 0.0, 0.0, 0.0, true, false);
     var ourArray: [AGENTNO]agent = undefined;
     initialize(&ourArray);
-    ourArray[0].update_speed();
-    ourArray[16].update_speed();
-    std.debug.print("{}\n", .{ourArray[16].speed});
 
     testPredator.update_speed();
     testPredator.update_position();
