@@ -1,51 +1,36 @@
 const std = @import("std");
-<<<<<<< HEAD
 const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
-const cstd = @cImport({@cInclude("stdio.h");});
-const GRID_SIZE:u32 = 1500;
-const TOTAL_SIZE: u32 = GRID_SIZE*GRID_SIZE;
+const cstd = @cImport({
+    @cInclude("stdio.h");
+});
+const GRID_SIZE: i32 = 1500;
+const TOTAL_SIZE: i32 = GRID_SIZE * GRID_SIZE;
 const CELL_SIZE: i8 = 1;
-const WINDOW_SIZE: i32 = CELL_SIZE*GRID_SIZE;
-const PREY_ENERGY_GAIN: f32 = 2.5;
-const PREDATOR_ENERGY_GAIN: f32 = PREY_ENERGY_GAIN * 10.0;
-const DEFAULT_ENERGY_LOSS: f32 = 1.0;
-const ENERGY_SCALE_LOSS: f32 = 1.0;
-const DEFAULT_DIGESTION_RATE: f32 = 0.1;
-const SIZE: f32 = 1.0;
-const DT: f32 = 1.0;
-const AGENTNO: u16 = 100;
-const RADUIS: f32 = 1.0;
-=======
-
+const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
 const ENERGY_MAX: f32 = 100.0;
 const PREY_ENERGY_GAIN: f32 = 2.5;
 const PREDATOR_ENERGY_GAIN: f32 = PREY_ENERGY_GAIN * 10.0;
-const DEFAULT_ENERGY_LOSS: f32 = 0.2;
-const ENERGY_SCALE_LOSS: f32 = 1.0;
+const DEFAULT_ENERGY_LOSS: f32 = 0.052;
+const ENERGY_SCALE_LOSS: f32 = 0.0;
 const DEFAULT_DIGESTION_RATE: f32 = 0.1;
-const RADIUS: f32 = 1.0;
+const RADIUS: f32 = 10.0;
 const DT: f32 = 1.0;
 const AGENTNO: u16 = 100;
 const RADIUS2: f32 = RADIUS * RADIUS;
 const SPLIT_MAX: f32 = 100.0;
 const SPLIT_DECAY: f32 = 0.1;
 const DIGESTION_MAX: f32 = 10;
-const GRID_SIZE = 100;
 
 // our random number generator
 var prng = std.rand.DefaultPrng.init(0);
 const randomGenerator = prng.random();
 
->>>>>>> function
 const Species = enum {
     prey,
     predator,
 };
-
-
-
 
 const agent = struct {
     species: Species,
@@ -172,7 +157,11 @@ const agent = struct {
 
 pub fn initialize(array: *[AGENTNO]agent) void {
     for (0..AGENTNO) |i| {
-        array[i] = agent.init(Species.predator, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, 0.0, ENERGY_MAX, 0.0, 0.0, true, false);
+        if (randomGenerator.boolean()) {
+            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, 0.0, ENERGY_MAX, 0.0, 0.0, true, false);
+        } else {
+            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, 0.0, ENERGY_MAX, 0.0, 0.0, true, false);
+        }
     }
 }
 
@@ -196,7 +185,7 @@ pub fn main() !void {
     defer c.SDL_Quit();
 
     const screen = c.SDL_CreateWindow("My Game Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, WINDOW_SIZE, WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse
-    {
+        {
         c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -208,84 +197,65 @@ pub fn main() !void {
     };
     defer c.SDL_DestroyRenderer(renderer);
 
-    var testPredator = agent.init(Species.predator, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, true, false);
-    var testPrey = agent.init(Species.prey, 0.0, 0.0, 0.5, -1.0, 0.0, 0.0, 0.0, 0.0, true, false);
     var ourArray: [AGENTNO]agent = undefined;
+
     initialize(&ourArray);
-    ourArray[0].update_speed();
-    ourArray[16].update_speed();
-    for (0..AGENTNO) |i| {
-        update_agent(&ourArray, &ourArray[0]);
-        std.debug.print("{}: {}, {} \n", .{ i, ourArray[0].energy, ourArray[0].is_dead });
-    }
-
-    testPredator.update_speed();
-    testPredator.update_position();
-    testPredator.update_energy();
-    testPredator.update_digestion();
-    testPredator.update_death();
-    std.debug.print("{}\n", .{testPredator.is_dead});
-    std.debug.print("{}\n", .{testPredator.posx});
-    std.debug.print("{}\n", .{testPredator.posy});
-
-    testPrey.update_speed();
-    testPrey.update_position();
-    testPrey.update_energy();
-    testPrey.update_digestion();
-    testPrey.update_death();
-    std.debug.print("{}\n", .{testPrey.is_dead});
-    std.debug.print("{}\n", .{testPrey.posx});
-    std.debug.print("{}\n", .{testPrey.posy});
-
+    var counter: u32 = 0;
     while (true) {
-        for(0..AGENTNO) |i|{
-            if(ourArray[i].is_dead == false){
-                _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
-                _ = c.SDL_RenderClear(renderer);
+        counter += 1;
+        std.debug.print("{}\n", .{counter});
+        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
+        _ = c.SDL_RenderClear(renderer);
+        for (0..AGENTNO) |i| {
+            update_agent(&ourArray, &ourArray[i]);
+            if (ourArray[i].is_dead == false) {
                 switch (ourArray[i].species) {
                     Species.predator => {
                         _ = c.SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF); //Red;
                     },
                     Species.prey => {
-                        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xFF, 0xFF); //Green
+                        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF); //Green
                     },
                 }
-                DrawCircle(renderer, ourArray[i].posx+20, ourArray[i].posy+20, RADUIS*10);
-                //DrawCircle(renderer,  10,10,2);
-                _ = c.SDL_RenderPresent(renderer);
-
+                DrawCircle(renderer, ourArray[i].posx, ourArray[i].posy, RADIUS);
             }
         }
+        _ = c.SDL_RenderPresent(renderer);
     }
 }
 
-pub fn  DrawCircle(renderer: *c.SDL_Renderer,centerX: f32,centerY: f32,radius: f32) void {
+pub fn DrawCircle(renderer: *c.SDL_Renderer, centerX: f32, centerY: f32, radius: f32) void {
     // Using the Midpoint Circle Algorithm
-    var x: i32 = @intFromFloat(radius);
-    var y: i32 = 0;
-    var p: i32 = 1 - @as(i32, @intFromFloat(radius));
-
-    // Draw the initial point on each octant
-    while (x > y) {
-        y += 1;
-
-        if (p <= 0) {
-            p = p + 2 * y + 1;
-        } else {
-            x -=1;
-            p = p + 2 * y - 2 * x + 1;
-        }
-
-        // Draw points in all eight octants
+    var counter: i32 = 0;
+    const iRad: i32 = @intFromFloat(radius);
+    while (counter < iRad) {
+        counter += 1;
+        var x: i32 = counter;
+        var y: i32 = 0;
+        var p: i32 = 1 - counter;
         const centerX1: i32 = @intFromFloat(centerX);
         const centerY1: i32 = @intFromFloat(centerY);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + x, centerY1 + y);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - x, centerY1 + y);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + x, centerY1 - y);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - x, centerY1 - y);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + y, centerY1 + x);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - y, centerY1 + x);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 + y, centerY1 - x);
-        _ = c.SDL_RenderDrawPoint(renderer, centerX1 - y, centerY1 - x);
+
+        // Draw the initial point on each octant
+        while (x > y) {
+            y += 1;
+
+            if (p <= 0) {
+                p = p + 2 * y + 1;
+            } else {
+                x -= 1;
+                p = p + 2 * y - 2 * x + 1;
+            }
+
+            // Draw points in all eight octants
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 + x, centerY1 + y);
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 - x, centerY1 + y);
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 + x, centerY1 - y);
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 - x, centerY1 - y);
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 + y, centerY1 + x);
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 - y, centerY1 + x);
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 + y, centerY1 - x);
+            _ = c.SDL_RenderDrawPoint(renderer, centerX1 - y, centerY1 - x);
+        }
     }
 }
