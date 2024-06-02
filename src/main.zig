@@ -103,7 +103,7 @@ pub fn main() !void {
     ourArray[0].update_speed();
     ourArray[16].update_speed();
     std.debug.print("{}\n", .{ourArray[16].speed});
-
+    std.debug.print("{}\n", .{});
     testPredator.update_speed();
     testPredator.update_position();
     testPredator.update_energy();
