@@ -16,20 +16,20 @@ const ENERGY_MAX: f32 = 100.0;
 const PREY_ENERGY_GAIN: f32 = 2.5;
 const PREY_LOSS_FACTOR: f32 = 10;
 const PREDATOR_ENERGY_GAIN: f32 = ENERGY_MAX / 2;
-const DEFAULT_ENERGY_LOSS: f32 = 0.2;
-const ENERGY_SCALE_LOSS: f32 = 0.5;
+const SPLIT_ADD: f32 = 1.0 * DT;
+const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 8;
+const ENERGY_SCALE_LOSS: f32 = 0.025;
 const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 7.0;
-const AGENTNO: u16 = 2000;
+const RADIUS: f32 = 5.0;
+const AGENTNO: u16 = 1500;
 const RADIUS2: f32 = RADIUS * RADIUS;
 const SPLIT_MAX: f32 = 100.0;
 const SPLIT_DECAY: f32 = 0.2 * DT;
-const SPLIT_ADD: f32 = 0.25 * DT;
 const DIGESTION_MAX: f32 = 10;
 const NUMBER_OF_RAYS: usize = 30;
 const VISION_LENGTH: f32 = 300;
 const PREY_FOV: f32 = 300.0 / 180.0 * math.pi;
-const PREDATOR_FOV: f32 = 90.0 / 180.0 * math.pi;
+const PREDATOR_FOV: f32 = 80.0 / 180.0 * math.pi;
 const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
 const MOMENTUM: f32 = 0.95;
 
@@ -95,12 +95,12 @@ const agent = struct {
                     array[i].digestion = 0;
                     for (0..NUMBER_OF_RAYS) |j| {
                         if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
-                            array[i].neuronx[j] = self.neuronx[j] + (randomGenerator.float(f32) - 0.5);
+                            array[i].neuronx[j] = self.neuronx[j] + (randomGenerator.float(f32) - 0.5) / 2;
                         } else {
                             array[i].vision[j] = self.vision[j];
                         }
                         if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
-                            array[i].neurony[j] = self.neurony[j] + (randomGenerator.float(f32) - 0.5);
+                            array[i].neurony[j] = self.neurony[j] + (randomGenerator.float(f32) - 0.5) / 2;
                         } else {
                             array[i].vision[j] = self.vision[j];
                         }
@@ -143,7 +143,7 @@ const agent = struct {
             endpointy = self.posy + (VISION_LENGTH * math.sin(angle + self.theta));
             dx = endpointx - self.posx;
             dy = endpointy - self.posy;
-            t = 0;
+            t = 100000.0;
             for (0..AGENTNO) |j| {
                 if (self.species != array[j].species and (!array[j].is_dead)) {
                     fx = self.posx - array[j].posx;
@@ -158,18 +158,24 @@ const agent = struct {
                         t2 = (-b + discriminant) / (2 * a);
                         if ((t1 > 0) and (t1 < 1)) {
                             if ((t2 > 0) and (t2 < t1)) {
-                                t = t2;
+                                if (t > t2) {
+                                    t = t2;
+                                }
                             } else {
-                                t = t1;
+                                if (t > t1) {
+                                    t = t1;
+                                }
                             }
                         }
                         if ((t2 > 0) and (t2 < 1)) {
-                            t = t2;
+                            if (t > t2) {
+                                t = t2;
+                            }
                         }
                     }
                 }
             }
-            self.vision[i] = 10.0 * t;
+            self.vision[i] = 1 / (t + 0.1);
             angle += step;
         }
     }
@@ -188,7 +194,7 @@ const agent = struct {
             thetasum = 0.2;
         }
         if ((thetasum == 0) and (dsum == 0)) {
-            self.theta += 0.2 / 10.0 * DT;
+            self.theta += 0.2 * DT;
             self.vel += 0;
         } else {
             if (self.energy == 0) {
@@ -376,8 +382,11 @@ pub fn main() !void {
     var contexts = try allocator.alloc(UpdateContext, num_threads);
     defer allocator.free(contexts);
 
-    var quit = false;
+    var quit: bool = false;
+    var counter: u32 = 0;
     while (!quit) {
+        counter += 1;
+        try stdout.print("{} \n", .{counter});
         var event: c.SDL_Event = undefined;
         while (c.SDL_PollEvent(&event) != 0) {
             switch (event.type) {

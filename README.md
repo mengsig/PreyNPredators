@@ -10,6 +10,7 @@ COMING SOON
 - Optimized code for faster runtime.
 - CUDA integration?
 - Real time population display.
+- Cooperation -> Inputs from nearby 'friendly' units.
 
 ------------------------------
 FUNCTIONAL THINGS
