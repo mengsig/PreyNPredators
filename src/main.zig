@@ -97,12 +97,12 @@ const agent = struct {
                         if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
                             array[i].neuronx[j] = self.neuronx[j] + (randomGenerator.float(f32) - 0.5) / 2;
                         } else {
-                            array[i].vision[j] = self.vision[j];
+                            array[i].neuronx[j] = self.neuronx[j];
                         }
                         if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
                             array[i].neurony[j] = self.neurony[j] + (randomGenerator.float(f32) - 0.5) / 2;
                         } else {
-                            array[i].vision[j] = self.vision[j];
+                            array[i].neurony[j] = self.neurony[j];
                         }
                     }
                     set = true;
