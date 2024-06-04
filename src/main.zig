@@ -5,8 +5,9 @@ const c = @cImport({
 const cstd = @cImport({
     @cInclude("stdio.h");
 });
+const Thread = std.Thread;
 const math = @import("std").math;
-const DT: f32 = 0.4;
+const DT: f32 = 0.37;
 const GRID_SIZE: i32 = 1500;
 const TOTAL_SIZE: i32 = GRID_SIZE * GRID_SIZE;
 const CELL_SIZE: i8 = 1;
@@ -18,16 +19,16 @@ const PREDATOR_ENERGY_GAIN: f32 = ENERGY_MAX / 2;
 const DEFAULT_ENERGY_LOSS: f32 = 0.2;
 const ENERGY_SCALE_LOSS: f32 = 0.5;
 const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 8.0;
-const AGENTNO: u16 = 750;
+const RADIUS: f32 = 7.0;
+const AGENTNO: u16 = 2000;
 const RADIUS2: f32 = RADIUS * RADIUS;
 const SPLIT_MAX: f32 = 100.0;
 const SPLIT_DECAY: f32 = 0.2 * DT;
-const SPLIT_ADD: f32 = 0.1 * DT;
+const SPLIT_ADD: f32 = 0.25 * DT;
 const DIGESTION_MAX: f32 = 10;
-const NUMBER_OF_RAYS: usize = 50;
-const VISION_LENGTH: f32 = 1000;
-const PREY_FOV: f32 = 250.0 / 180.0 * math.pi;
+const NUMBER_OF_RAYS: usize = 30;
+const VISION_LENGTH: f32 = 300;
+const PREY_FOV: f32 = 300.0 / 180.0 * math.pi;
 const PREDATOR_FOV: f32 = 90.0 / 180.0 * math.pi;
 const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
 const MOMENTUM: f32 = 0.95;
@@ -77,7 +78,7 @@ const agent = struct {
     }
 
     pub fn update_children(self: *Self, array: *[AGENTNO]agent) void {
-        if (self.split > SPLIT_MAX) {
+        if ((self.split > SPLIT_MAX) and (!self.is_dead)) {
             self.split += -SPLIT_MAX;
             var set: bool = false;
             var i: u32 = 0;
@@ -124,6 +125,9 @@ const agent = struct {
         var angle: f32 = 0;
         var t1: f32 = 0;
         var t2: f32 = 0;
+        var t: f32 = 0;
+        var endpointx: f32 = 0;
+        var endpointy: f32 = 0;
         switch (self.species) {
             Species.prey => {
                 step = PREY_FOV / (NUMBER_OF_RAYS - 1);
@@ -135,11 +139,10 @@ const agent = struct {
             },
         }
         for (0..NUMBER_OF_RAYS) |i| {
-            const endpointx: f32 = self.posx + (VISION_LENGTH * math.cos(angle + self.theta));
-            const endpointy: f32 = self.posy + (VISION_LENGTH * math.sin(angle + self.theta));
+            endpointx = self.posx + (VISION_LENGTH * math.cos(angle + self.theta));
+            endpointy = self.posy + (VISION_LENGTH * math.sin(angle + self.theta));
             dx = endpointx - self.posx;
             dy = endpointy - self.posy;
-            var t: f32 = 0;
             t = 0;
             for (0..AGENTNO) |j| {
                 if (self.species != array[j].species and (!array[j].is_dead)) {
@@ -307,22 +310,35 @@ pub fn initialize(array: *[AGENTNO]agent) void {
     }
 }
 
-pub fn update_agent(array: *[AGENTNO]agent, ourAgent: *agent) void {
+pub fn update_agent(array: *[AGENTNO]agent, ourAgent: *agent) !void {
     if (!ourAgent.is_dead) {
         ourAgent.update_vision(array);
         ourAgent.update_velocity();
         ourAgent.update_position();
         ourAgent.update_energy();
         if (ourAgent.energy > ENERGY_MAX) {
-            ourAgent.energy = 100;
+            ourAgent.energy = ENERGY_MAX;
         }
+
         ourAgent.update_death();
         ourAgent.update_digestion();
         ourAgent.eats(array);
         ourAgent.update_children(array);
     }
 }
+const UpdateContext = struct {
+    array: *[AGENTNO]agent,
+    start: usize,
+    end: usize,
+};
 
+pub fn update_agent_chunk(ctx: *UpdateContext) !void {
+    for (ctx.start..ctx.end) |i| {
+        try update_agent(ctx.array, &ctx.array[i]);
+    }
+}
+
+const stdout = std.io.getStdOut().writer();
 pub fn main() !void {
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         c.SDL_Log("Unable to initialize SDL: %s", c.SDL_GetError());
@@ -330,8 +346,7 @@ pub fn main() !void {
     }
     defer c.SDL_Quit();
 
-    const screen = c.SDL_CreateWindow("My Game Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, WINDOW_SIZE, WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse
-        {
+    const screen = c.SDL_CreateWindow("My Game Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, WINDOW_SIZE, WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse {
         c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -342,16 +357,27 @@ pub fn main() !void {
         return error.SDLInitializationFailed;
     };
     defer c.SDL_DestroyRenderer(renderer);
+    //Test different allocators for speed
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    const num_threads = 12;
+    const chunk_size = AGENTNO / num_threads;
 
     var ourArray: [AGENTNO]agent = undefined;
 
+    //Initial conditions
     initialize(&ourArray);
+
+    //Create threads array for parallel processing
+    var threads = try allocator.alloc(std.Thread, num_threads);
+    defer allocator.free(threads);
+
+    //Create contexts array for parallel processing
+    var contexts = try allocator.alloc(UpdateContext, num_threads);
+    defer allocator.free(contexts);
+
     var quit = false;
-    var counter: u32 = 0;
     while (!quit) {
-        //        if (counter > 100) {
-        //            break;
-        //        }
         var event: c.SDL_Event = undefined;
         while (c.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
@@ -361,18 +387,30 @@ pub fn main() !void {
                 else => {},
             }
         }
-        counter += 1;
+        for (0..num_threads) |t| {
+            const start = t * chunk_size;
+            const end = if (t == num_threads - 1) AGENTNO else start + chunk_size;
+            contexts[t] = UpdateContext{ .array = &ourArray, .start = start, .end = end };
+            threads[t] = try std.Thread.spawn(.{
+                .stack_size = 512 * 512, //  Adjust depending on Number of Agents.
+                .allocator = allocator, // Pass the allocator
+            }, update_agent_chunk, .{&contexts[t]});
+        }
+
+        for (0..num_threads) |t| {
+            threads[t].join();
+        }
+
         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
         _ = c.SDL_RenderClear(renderer);
         for (0..AGENTNO) |i| {
-            update_agent(&ourArray, &ourArray[i]);
-            if (ourArray[i].is_dead == false) {
+            if (!ourArray[i].is_dead) {
                 switch (ourArray[i].species) {
                     Species.predator => {
-                        _ = c.SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF); //Red;
+                        _ = c.SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF); // Red
                     },
                     Species.prey => {
-                        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF); //Green
+                        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF); // Green
                     },
                 }
                 DrawCircle(renderer, ourArray[i].posx, ourArray[i].posy, RADIUS);
