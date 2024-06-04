@@ -20,7 +20,7 @@ $ zig build run -Dcpu=<your_cpu_architecture_here> -Doptimize=ReleaseFast
 
 Note, that if you do not know your cpu architecture, you can just delete the -flag (I personally use a tigerlake).
 
-![Model](https://github.com/mengsig/PreyNPredator/blob/main/fig.png?raw=true)
+![Model](https://github.com/mengsig/PreyNPredators/blob/main/fig.png?raw=true)
 
 Please enjoy, and share!
 
