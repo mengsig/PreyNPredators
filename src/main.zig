@@ -18,6 +18,11 @@ const GRID_SIZE: i32 = 1500;
 const TOTAL_SIZE: i32 = GRID_SIZE * GRID_SIZE;
 const CELL_SIZE: i8 = 1;
 const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
+
+const PLOT_WINDOW_HEIGHT: u16 = 600;
+const PLOT_WINDOW_WIDTH: u16 = 800;
+const PLOT_MAX_POINTS: i32 = 1000;
+
 const ENERGY_MAX: f32 = 100.0;
 const PREY_ENERGY_GAIN: f32 = 2.5;
 const PREY_LOSS_FACTOR: f32 = 10;
@@ -42,6 +47,23 @@ const MOMENTUM: f32 = 0.95;
 var prng = std.rand.DefaultPrng.init(0);
 const randomGenerator = prng.random();
 
+pub fn count(preyNo: *u32, predatorNo: *u32, array: *[AGENTNO]f.agent) void {
+    preyNo.* = 0;
+    predatorNo.* = 0;
+    for (0..AGENTNO) |i| {
+        if (!array[i].is_dead) {
+            switch (array[i].species) {
+                f.Species.prey => {
+                    preyNo.* += 1;
+                },
+                f.Species.predator => {
+                    predatorNo.* += 1;
+                },
+            }
+        }
+    }
+}
+
 const stdout = std.io.getStdOut().writer();
 pub fn main() !void {
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
@@ -61,6 +83,28 @@ pub fn main() !void {
         return error.SDLInitializationFailed;
     };
     defer c.SDL_DestroyRenderer(renderer);
+
+    // Create second window for plotting
+    const plot_window = c.SDL_CreateWindow("Plot Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, PLOT_WINDOW_WIDTH, PLOT_WINDOW_HEIGHT, c.SDL_WINDOW_OPENGL) orelse {
+        c.SDL_Log("Unable to create plot window: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer c.SDL_DestroyWindow(plot_window);
+
+    const plot_renderer = c.SDL_CreateRenderer(plot_window, -1, c.SDL_RENDERER_ACCELERATED) orelse {
+        c.SDL_Log("Unable to create plot renderer: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer c.SDL_DestroyRenderer(plot_renderer);
+
+    //Plotting stuff
+    var preyNo: u32 = 0;
+    var predatorNo: u32 = 0;
+    var theCount: i32 = 0;
+    var preyData: [PLOT_MAX_POINTS]u32 = undefined;
+    var predatorData: [PLOT_MAX_POINTS]u32 = undefined;
+    var currentIndex: u32 = 0;
+
     //Test different allocators for speed
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -123,6 +167,42 @@ pub fn main() !void {
             }
         }
         _ = c.SDL_RenderPresent(renderer);
+
+        // Update plot data (dummy update for demonstration purposes)
+        count(&preyNo, &predatorNo, &ourArray);
+
+        // Store the data
+        preyData[currentIndex] = preyNo;
+        predatorData[currentIndex] = predatorNo;
+        currentIndex = (currentIndex + 1) % PLOT_MAX_POINTS;
+
+        // Render plot
+        _ = c.SDL_SetRenderDrawColor(plot_renderer, 0x00, 0x00, 0x00, 0xFF); // Black background
+        _ = c.SDL_RenderClear(plot_renderer);
+
+        theCount = 0;
+        while (theCount < PLOT_MAX_POINTS - 1) {
+            const x1 = @divFloor((theCount * PLOT_WINDOW_WIDTH), PLOT_MAX_POINTS);
+            const x2 = @divFloor(((theCount + 1) * PLOT_WINDOW_WIDTH), PLOT_MAX_POINTS);
+
+            const newCount: u32 = @intCast(theCount);
+            const preyY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+            const preyY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+
+            const predatorY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+            const predatorY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+
+            // Draw prey line
+            _ = c.SDL_SetRenderDrawColor(plot_renderer, 0, 255, 0, 255); // Green
+            _ = c.SDL_RenderDrawLine(plot_renderer, x1, preyY1, x2, preyY2);
+
+            // Draw predator line
+            _ = c.SDL_SetRenderDrawColor(plot_renderer, 255, 0, 0, 255); // Red
+            _ = c.SDL_RenderDrawLine(plot_renderer, x1, predatorY1, x2, predatorY2);
+            theCount += 1;
+        }
+
+        _ = c.SDL_RenderPresent(plot_renderer);
     }
 }
 

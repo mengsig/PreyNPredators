@@ -343,9 +343,9 @@ pub fn initialize(array: *[AGENTNO]agent) void {
             }
         }
         if (randomGenerator.boolean()) {
-            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, 0.0, 0.0, true, false, neuronx, neurony);
+            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, true, false, neuronx, neurony);
         } else {
-            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, 0.0, 0.0, true, false, neuronx, neurony);
+            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, true, false, neuronx, neurony);
         }
     }
 }
