@@ -38,6 +38,14 @@ const MOMENTUM: f32 = 0.95;
 var prng = std.rand.DefaultPrng.init(0);
 pub const randomGenerator = prng.random();
 
+pub inline fn abs(x: f32) f32 {
+    if (x < 0) {
+        return -x;
+    } else {
+        return x;
+    }
+}
+
 pub const Species = enum {
     prey,
     predator,
@@ -145,10 +153,10 @@ pub const agent = struct {
             endpointy = self.posy + (VISION_LENGTH * math.sin(angle + self.theta));
             dx = endpointx - self.posx;
             dy = endpointy - self.posy;
-            t = 100000.0;
+            t = 10.0;
             visiontype = 0;
             for (0..AGENTNO) |j| {
-                if (self.species != array[j].species and (!array[j].is_dead)) {
+                if (!array[j].is_dead and (self.posx != array[j].posx) and (self.posy != array[j].posy)) {
                     fx = self.posx - array[j].posx;
                     fy = self.posy - array[j].posy;
                     a = (dx * dx) + (dy * dy);
@@ -205,11 +213,11 @@ pub const agent = struct {
                     }
                 }
             }
-            if (t == 100000.0) {
+            if (t == 10.0) {
                 self.vision[2 * i] = 0;
                 self.vision[2 * i + 1] = 0;
             } else {
-                self.vision[2 * i] = 1 / (t + 0.1);
+                self.vision[2 * i] = 1 / (t + 1);
                 self.vision[2 * i + 1] = visiontype;
             }
             angle += step;
@@ -263,7 +271,6 @@ pub const agent = struct {
 
     pub fn update_energy(self: *Self) void {
         switch (self.species) {
-            // remember that zero is prey
             Species.prey => {
                 if (self.vel < 0.001) {
                     self.energy += PREY_ENERGY_GAIN;
@@ -274,7 +281,6 @@ pub const agent = struct {
                     }
                 }
             },
-            // remember that one is predator
             Species.predator => {
                 self.energy += (-self.vel * ENERGY_SCALE_LOSS) - DEFAULT_ENERGY_LOSS;
             },
@@ -311,7 +317,7 @@ pub const agent = struct {
             }
         }
         if (self.species == Species.prey) {
-            self.split += SPLIT_ADD;
+            self.split += SPLIT_ADD * (1 + abs(self.vel));
         }
     }
 

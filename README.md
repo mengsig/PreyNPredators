@@ -6,6 +6,7 @@ There are many parameters to play with, which, will be optimized soon!
 IMPLEMENTED
 -------------------------------
 - Cooperation
+- Real time population display.
 
 -------------------------------
 COMING SOON 
@@ -14,7 +15,6 @@ COMING SOON
 - Better visualization of the agents.
 - Optimized code for faster runtime.
 - CUDA integration?
-- Real time population display.
 
 
 ------------------------------

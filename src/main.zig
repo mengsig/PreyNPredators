@@ -203,6 +203,9 @@ pub fn main() !void {
         }
 
         _ = c.SDL_RenderPresent(plot_renderer);
+        if ((preyNo == 0) or (predatorNo == 0)) {
+            break;
+        }
     }
 }
 

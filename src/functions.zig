@@ -28,7 +28,7 @@ const SPLIT_MAX: f32 = 100.0;
 const SPLIT_DECAY: f32 = 0.2 * DT;
 const DIGESTION_MAX: f32 = 25;
 const NUMBER_OF_RAYS: usize = 30;
-const VISION_LENGTH: f32 = 300;
+const VISION_LENGTH: f32 = 750;
 const PREY_FOV: f32 = 300.0 / 180.0 * math.pi;
 const PREDATOR_FOV: f32 = 80.0 / 180.0 * math.pi;
 const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
@@ -37,6 +37,14 @@ const MOMENTUM: f32 = 0.95;
 // our random number generator
 var prng = std.rand.DefaultPrng.init(0);
 pub const randomGenerator = prng.random();
+
+pub inline fn abs(x: f32) f32 {
+    if (x < 0) {
+        return -x;
+    } else {
+        return x;
+    }
+}
 
 pub const Species = enum {
     prey,
@@ -179,7 +187,7 @@ pub const agent = struct {
             if (t == 100000.0) {
                 self.vision[i] = 0;
             } else {
-                self.vision[i] = 1 / (t + 0.1);
+                self.vision[i] = 1 / (t + 0.2);
             }
             angle += step;
         }
@@ -281,7 +289,7 @@ pub const agent = struct {
             }
         }
         if (self.species == Species.prey) {
-            self.split += SPLIT_ADD;
+            self.split += SPLIT_ADD / (1 + @sqrt(abs(self.vel)));
         }
     }
 
