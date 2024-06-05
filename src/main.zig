@@ -15,9 +15,8 @@ const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
 const ENERGY_MAX: f32 = 100.0;
 const PREY_ENERGY_GAIN: f32 = 2.5;
 const PREY_LOSS_FACTOR: f32 = 10;
-const PREDATOR_ENERGY_GAIN: f32 = ENERGY_MAX / 2;
 const SPLIT_ADD: f32 = 1.0 * DT;
-const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 8;
+const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 4;
 const ENERGY_SCALE_LOSS: f32 = 0.025;
 const DEFAULT_DIGESTION_RATE: f32 = 1;
 const RADIUS: f32 = 5.0;
@@ -95,12 +94,12 @@ const agent = struct {
                     array[i].digestion = 0;
                     for (0..NUMBER_OF_RAYS) |j| {
                         if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
-                            array[i].neuronx[j] = self.neuronx[j] + (randomGenerator.float(f32) - 0.5) / 2;
+                            array[i].neuronx[j] = self.neuronx[j] + (randomGenerator.float(f32) - 0.5) / 5;
                         } else {
                             array[i].neuronx[j] = self.neuronx[j];
                         }
                         if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
-                            array[i].neurony[j] = self.neurony[j] + (randomGenerator.float(f32) - 0.5) / 2;
+                            array[i].neurony[j] = self.neurony[j] + (randomGenerator.float(f32) - 0.5) / 5;
                         } else {
                             array[i].neurony[j] = self.neurony[j];
                         }
@@ -175,7 +174,11 @@ const agent = struct {
                     }
                 }
             }
-            self.vision[i] = 1 / (t + 0.1);
+            if (t == 100000.0) {
+                self.vision[i] = 0;
+            } else {
+                self.vision[i] = 1 / (t + 0.1);
+            }
             angle += step;
         }
     }
@@ -262,7 +265,7 @@ const agent = struct {
                             if (distance < 4 * RADIUS2) {
                                 if (self.digestion == 0) {
                                     array[i].is_dead = true;
-                                    self.energy += PREY_ENERGY_GAIN;
+                                    self.energy += ENERGY_MAX / 2;
                                     if (self.energy > ENERGY_MAX) {
                                         self.energy = ENERGY_MAX;
                                     }
