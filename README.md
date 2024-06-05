@@ -3,6 +3,11 @@ This is an agent based prey and predator model where each agent has a little bra
 There are many parameters to play with, which, will be optimized soon!
 
 -------------------------------
+IMPLEMENTED
+-------------------------------
+- Cooperation
+
+-------------------------------
 COMING SOON 
 -------------------------------
 - Optimized parameters for great visualizations!
@@ -10,7 +15,7 @@ COMING SOON
 - Optimized code for faster runtime.
 - CUDA integration?
 - Real time population display.
-- Cooperation -> Inputs from nearby 'friendly' units.
+
 
 ------------------------------
 FUNCTIONAL THINGS
