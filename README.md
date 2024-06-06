@@ -2,11 +2,14 @@ This is an agent based prey and predator model where each agent has a little bra
 
 There are many parameters to play with, which, will be optimized soon!
 
+Also, please switch between the array and class (modular) approach by going into the "build.zig" file and changing the target from "main.zig" to "mainarray.zig" or vice-versa.
+
 -------------------------------
 IMPLEMENTED
 -------------------------------
 - Cooperation
 - Real time population display.
+- Array based implementation --> to prepare for GPU implementation.
 
 -------------------------------
 COMING SOON 

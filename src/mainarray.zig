@@ -6,11 +6,9 @@ const cstd = @cImport({
     @cInclude("stdio.h");
 });
 
+const f = @import("array.zig");
 const Thread = std.Thread;
 const NUM_THREADS = 14;
-
-const COOPERATION: bool = false;
-const f = if (COOPERATION) @import("functionscooperation.zig") else @import("functions.zig");
 
 const math = @import("std").math;
 const DT: f32 = 0.37;
@@ -21,7 +19,7 @@ const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
 
 const PLOT_WINDOW_HEIGHT: u16 = 600;
 const PLOT_WINDOW_WIDTH: u16 = 800;
-const PLOT_MAX_POINTS: i32 = 1000;
+const PLOT_MAX_POINTS: i32 = GRID_SIZE;
 
 const ENERGY_MAX: f32 = 100.0;
 const PREY_ENERGY_GAIN: f32 = 2.5;
@@ -47,12 +45,12 @@ const MOMENTUM: f32 = 0.95;
 var prng = std.rand.DefaultPrng.init(0);
 const randomGenerator = prng.random();
 
-pub fn count(preyNo: *u32, predatorNo: *u32, array: *[AGENTNO]f.agent) void {
+pub fn count(is_dead: *[AGENTNO]bool, species: *[AGENTNO]f.Species, preyNo: *u32, predatorNo: *u32) void {
     preyNo.* = 0;
     predatorNo.* = 0;
     for (0..AGENTNO) |i| {
-        if (!array[i].is_dead) {
-            switch (array[i].species) {
+        if (!is_dead[i]) {
+            switch (species[i]) {
                 f.Species.prey => {
                     preyNo.* += 1;
                 },
@@ -63,7 +61,6 @@ pub fn count(preyNo: *u32, predatorNo: *u32, array: *[AGENTNO]f.agent) void {
         }
     }
 }
-
 const stdout = std.io.getStdOut().writer();
 pub fn main() !void {
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
@@ -104,24 +101,36 @@ pub fn main() !void {
     var preyData: [PLOT_MAX_POINTS]u32 = undefined;
     var predatorData: [PLOT_MAX_POINTS]u32 = undefined;
     var currentIndex: u32 = 0;
+    for (0..PLOT_MAX_POINTS) |i| {
+        preyData[i] = 0;
+        predatorData[i] = 0;
+    }
 
     //Test different allocators for speed
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    const chunk_size = AGENTNO / NUM_THREADS;
-
-    var ourArray: [AGENTNO]f.agent = undefined;
+    //    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    //    const allocator = gpa.allocator();
+    //    const chunk_size = AGENTNO / NUM_THREADS;
 
     //Initial conditions
-    f.initialize(&ourArray);
+
+    var posx: [AGENTNO]f32 = f.initialize_posx();
+    var posy: [AGENTNO]f32 = f.initialize_posy();
+    var vel: [AGENTNO]f32 = f.initialize_vel();
+    var theta: [AGENTNO]f32 = f.initialize_theta();
+    var energy: [AGENTNO]f32 = f.initialize_energy();
+    var split: [AGENTNO]f32 = f.initialize_split();
+    var digestion: [AGENTNO]f32 = f.initialize_digestion();
+    var species: [AGENTNO]f.Species = f.initialize_species();
+    var is_dead: [AGENTNO]bool = f.initialize_is_dead();
+    var nn: [AGENTNO]f.neuralnet = f.initialize_nn();
 
     //Create threads array for parallel processing
-    var threads = try allocator.alloc(std.Thread, NUM_THREADS);
-    defer allocator.free(threads);
+    //    var threads = try allocator.alloc(std.Thread, NUM_THREADS);
+    //    defer allocator.free(threads);
 
     //Create contexts array for parallel processing
-    var contexts = try allocator.alloc(f.UpdateContext, NUM_THREADS);
-    defer allocator.free(contexts);
+    //    var contexts = try allocator.alloc(f.UpdateContext, NUM_THREADS);
+    //    defer allocator.free(contexts);
 
     var quit: bool = false;
     var counter: u32 = 0;
@@ -137,25 +146,26 @@ pub fn main() !void {
                 else => {},
             }
         }
-        for (0..NUM_THREADS) |t| {
-            const start = t * chunk_size;
-            const end = if (t == NUM_THREADS - 1) AGENTNO else start + chunk_size;
-            contexts[t] = f.UpdateContext{ .array = &ourArray, .start = start, .end = end };
-            threads[t] = try std.Thread.spawn(.{
-                .stack_size = 512 * 512, //  Adjust depending on Number of Agents.
-                .allocator = allocator, // Pass the allocator
-            }, f.update_agent_chunk, .{&contexts[t]});
-        }
-
-        for (0..NUM_THREADS) |t| {
-            threads[t].join();
-        }
+        try f.update_agents(&posx, &posy, &vel, &theta, &energy, &split, &digestion, &species, &is_dead, &nn);
+        //        for (0..NUM_THREADS) |t| {
+        //            const start = t * chunk_size;
+        //            const end = if (t == NUM_THREADS - 1) AGENTNO else start + chunk_size;
+        //            contexts[t] = f.UpdateContext{ .array = &ourArray, .start = start, .end = end };
+        //            threads[t] = try std.Thread.spawn(.{
+        //                .stack_size = 512 * 512, //  Adjust depending on Number of Agents.
+        //                .allocator = allocator, // Pass the allocator
+        //            }, f.update_agent_chunk, .{&contexts[t]});
+        //        }
+        //
+        //        for (0..NUM_THREADS) |t| {
+        //            threads[t].join();
+        //        }
 
         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
         _ = c.SDL_RenderClear(renderer);
         for (0..AGENTNO) |i| {
-            if (!ourArray[i].is_dead) {
-                switch (ourArray[i].species) {
+            if (!is_dead[i]) {
+                switch (species[i]) {
                     f.Species.predator => {
                         _ = c.SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF); // Red
                     },
@@ -163,15 +173,24 @@ pub fn main() !void {
                         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF); // Green
                     },
                 }
-                DrawCircle(renderer, ourArray[i].posx, ourArray[i].posy, RADIUS);
+                DrawCircle(renderer, posx[i], posy[i], RADIUS);
             }
         }
         _ = c.SDL_RenderPresent(renderer);
 
         // Update plot data (dummy update for demonstration purposes)
-        count(&preyNo, &predatorNo, &ourArray);
+        count(&is_dead, &species, &preyNo, &predatorNo);
 
         // Store the data
+        var counter1: u32 = 0;
+        var counter2: u32 = 0;
+        for (0..AGENTNO) |i| {
+            if (species[i] == f.Species.prey) {
+                counter1 += 1;
+            } else {
+                counter2 += 1;
+            }
+        }
         preyData[currentIndex] = preyNo;
         predatorData[currentIndex] = predatorNo;
         currentIndex = (currentIndex + 1) % PLOT_MAX_POINTS;
