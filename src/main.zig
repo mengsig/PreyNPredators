@@ -7,7 +7,12 @@ const cstd = @cImport({
 });
 
 const Thread = std.Thread;
-const NUM_THREADS = 14;
+const NUM_THREADS = 12;
+const SAVE_FREQUENCY = 5000;
+//const MODEL_LOADING = true;
+//const MODEL_PATH = "models/";
+//const MODEL_N = 1000;
+//const MODEL_COUNTER = 45000;
 
 const COOPERATION: bool = false;
 const f = if (COOPERATION) @import("functionscooperation.zig") else @import("functions.zig");
@@ -19,10 +24,6 @@ const TOTAL_SIZE: i32 = GRID_SIZE * GRID_SIZE;
 const CELL_SIZE: i8 = 1;
 const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
 
-const PLOT_WINDOW_HEIGHT: u16 = 600;
-const PLOT_WINDOW_WIDTH: u16 = 800;
-const PLOT_MAX_POINTS: i32 = 1000;
-
 const ENERGY_MAX: f32 = 100.0;
 const PREY_ENERGY_GAIN: f32 = 2.5;
 const PREY_LOSS_FACTOR: f32 = 10;
@@ -30,18 +31,23 @@ const SPLIT_ADD: f32 = 1.0 * DT;
 const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 5;
 const ENERGY_SCALE_LOSS: f32 = 0.025;
 const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 5.0;
-const AGENTNO: u16 = 1500;
+const RADIUS: f32 = 4.0;
+const AGENTNO: u16 = 750;
 const RADIUS2: f32 = RADIUS * RADIUS;
 const SPLIT_MAX: f32 = 100.0;
 const SPLIT_DECAY: f32 = 0.2 * DT;
 const DIGESTION_MAX: f32 = 25;
 const NUMBER_OF_RAYS: usize = 30;
-const VISION_LENGTH: f32 = 300;
-const PREY_FOV: f32 = 300.0 / 180.0 * math.pi;
+const VISION_LENGTH: f32 = 750;
+const PREY_FOV: f32 = 360.0 / 180.0 * math.pi;
 const PREDATOR_FOV: f32 = 80.0 / 180.0 * math.pi;
 const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
 const MOMENTUM: f32 = 0.95;
+
+// Plotting stuff
+const PLOT_WINDOW_HEIGHT: u16 = 600;
+const PLOT_WINDOW_WIDTH: u16 = 800;
+const PLOT_MAX_POINTS: i32 = AGENTNO;
 
 // our random number generator
 var prng = std.rand.DefaultPrng.init(0);
@@ -105,6 +111,11 @@ pub fn main() !void {
     var predatorData: [PLOT_MAX_POINTS]u32 = undefined;
     var currentIndex: u32 = 0;
 
+    // initializing stuff
+    const fs = std.fs.cwd();
+    const allocator1 = std.heap.page_allocator;
+    var filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ 0, AGENTNO, 0 });
+
     //Test different allocators for speed
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -127,6 +138,29 @@ pub fn main() !void {
     var counter: u32 = 0;
     while (!quit) {
         counter += 1;
+        if (counter % SAVE_FREQUENCY == 0) {
+            for (0..AGENTNO) |i| {
+                if (ourArray[i].species == f.Species.prey) {
+                    filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
+                    var file = try fs.createFile(filename, .{});
+                    defer file.close();
+                    var writer = file.writer();
+                    try writer.print("neuron1,neuron2\n", .{});
+                    for (0..NUMBER_OF_RAYS) |j| {
+                        try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                    }
+                } else {
+                    filename = try std.fmt.allocPrint(allocator1, "models/predator1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
+                    var file = try fs.createFile(filename, .{});
+                    defer file.close();
+                    var writer = file.writer();
+                    try writer.print("neuron1,neuron2\n", .{});
+                    for (0..NUMBER_OF_RAYS) |j| {
+                        try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                    }
+                }
+            }
+        }
         try stdout.print("{} \n", .{counter});
         var event: c.SDL_Event = undefined;
         while (c.SDL_PollEvent(&event) != 0) {
@@ -205,6 +239,27 @@ pub fn main() !void {
         _ = c.SDL_RenderPresent(plot_renderer);
         if ((preyNo == 0) or (predatorNo == 0)) {
             break;
+        }
+    }
+    for (0..AGENTNO) |i| {
+        if (ourArray[i].species == f.Species.prey) {
+            filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
+            var file = try fs.createFile(filename, .{});
+            defer file.close();
+            var writer = file.writer();
+            try writer.print("neuron1,neuron2\n", .{});
+            for (0..NUMBER_OF_RAYS) |j| {
+                try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+            }
+        } else {
+            filename = try std.fmt.allocPrint(allocator1, "models/predator1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
+            var file = try fs.createFile(filename, .{});
+            defer file.close();
+            var writer = file.writer();
+            try writer.print("neuron1,neuron2\n", .{});
+            for (0..NUMBER_OF_RAYS) |j| {
+                try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+            }
         }
     }
 }

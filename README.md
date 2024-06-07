@@ -10,12 +10,13 @@ IMPLEMENTED
 - Cooperation
 - Real time population display.
 - Array based implementation --> to prepare for GPU implementation.
+- Saving of model parameters
 
 -------------------------------
 COMING SOON 
 -------------------------------
-- Optimized parameters for great visualizations!
 - Better visualization of the agents.
+- Display of Neural Nets
 - Optimized code for faster runtime.
 - CUDA integration?
 

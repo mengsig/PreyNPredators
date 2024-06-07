@@ -8,7 +8,7 @@ const cstd = @cImport({
 
 const f = @import("array.zig");
 const Thread = std.Thread;
-const NUM_THREADS = 14;
+const NUM_THREADS = 12;
 
 const math = @import("std").math;
 const DT: f32 = 0.37;
@@ -28,15 +28,15 @@ const SPLIT_ADD: f32 = 1.0 * DT;
 const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 5;
 const ENERGY_SCALE_LOSS: f32 = 0.025;
 const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 5.0;
-const AGENTNO: u16 = 1500;
+const RADIUS: f32 = 4.0;
+const AGENTNO: u16 = 1000;
 const RADIUS2: f32 = RADIUS * RADIUS;
 const SPLIT_MAX: f32 = 100.0;
 const SPLIT_DECAY: f32 = 0.2 * DT;
 const DIGESTION_MAX: f32 = 25;
 const NUMBER_OF_RAYS: usize = 30;
 const VISION_LENGTH: f32 = 300;
-const PREY_FOV: f32 = 300.0 / 180.0 * math.pi;
+const PREY_FOV: f32 = 360.0 / 180.0 * math.pi;
 const PREDATOR_FOV: f32 = 80.0 / 180.0 * math.pi;
 const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
 const MOMENTUM: f32 = 0.95;
@@ -49,13 +49,13 @@ const allocator = gpa.allocator();
 var prng = std.rand.DefaultPrng.init(0);
 pub const randomGenerator = prng.random();
 
-pub inline fn abs(x: f32) f32 {
-    if (x < 0) {
-        return -x;
-    } else {
-        return x;
-    }
-}
+//pub inline fn abs(x: f32) f32 {
+//    if (x < 0) {
+//        return -x;
+//    } else {
+//        return x;
+//    }
+//}
 
 pub const Species = enum {
     prey,
@@ -377,7 +377,8 @@ pub fn eats(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]f32, energy
             }
         }
         if (species[i] == Species.prey) {
-            split[i] += SPLIT_ADD / (1 + @sqrt(abs(vel[i])));
+            split[i] += SPLIT_ADD; // (1 + @sqrt(abs(vel[i])));
+            vel[i] += 0;
         }
     }
 }
