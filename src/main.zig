@@ -111,7 +111,7 @@ pub fn main() !void {
     var predatorData: [PLOT_MAX_POINTS]u32 = undefined;
     var currentIndex: u32 = 0;
 
-    // initializing stuff
+    // initializing stuff for saving
     const fs = std.fs.cwd();
     const allocator1 = std.heap.page_allocator;
     var filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ 0, AGENTNO, 0 });
@@ -121,6 +121,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     const chunk_size = AGENTNO / NUM_THREADS;
 
+    //Intializing our array of agents
     var ourArray: [AGENTNO]f.agent = undefined;
 
     //Initial conditions
@@ -138,6 +139,7 @@ pub fn main() !void {
     var counter: u32 = 0;
     while (!quit) {
         counter += 1;
+        // Save function
         if (counter % SAVE_FREQUENCY == 0) {
             for (0..AGENTNO) |i| {
                 if (ourArray[i].species == f.Species.prey) {
@@ -161,6 +163,7 @@ pub fn main() !void {
                 }
             }
         }
+
         try stdout.print("{} \n", .{counter});
         var event: c.SDL_Event = undefined;
         while (c.SDL_PollEvent(&event) != 0) {
