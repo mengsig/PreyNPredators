@@ -10,7 +10,7 @@ IMPLEMENTED
 - Cooperation
 - Real time population display.
 - Array based implementation --> to prepare for GPU implementation.
-- Saving of model parameters
+- Saving of neural networks.
 
 -------------------------------
 COMING SOON 
@@ -19,6 +19,7 @@ COMING SOON
 - Display of Neural Nets
 - Optimized code for faster runtime.
 - CUDA integration?
+- Loading of neural networks.
 
 
 ------------------------------
