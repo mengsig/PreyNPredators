@@ -9,6 +9,8 @@ const cstd = @cImport({
 const Thread = std.Thread;
 const NUM_THREADS = 12;
 const SAVE_FREQUENCY = 5000;
+const LOOPS = false;
+const COPYNUM = 10;
 //const MODEL_LOADING = true;
 //const MODEL_PATH = "models/";
 //const MODEL_N = 1000;
@@ -28,10 +30,10 @@ const ENERGY_MAX: f32 = 100.0;
 const PREY_ENERGY_GAIN: f32 = 2.5;
 const PREY_LOSS_FACTOR: f32 = 10;
 const SPLIT_ADD: f32 = 1.0 * DT;
-const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 5;
+const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 8;
 const ENERGY_SCALE_LOSS: f32 = 0.025;
 const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 4.0;
+const RADIUS: f32 = 5.0;
 const AGENTNO: u16 = 750;
 const RADIUS2: f32 = RADIUS * RADIUS;
 const SPLIT_MAX: f32 = 100.0;
@@ -45,7 +47,7 @@ const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
 const MOMENTUM: f32 = 0.95;
 
 // Plotting stuff
-const PLOT_WINDOW_HEIGHT: u16 = 600;
+const PLOT_WINDOW_HEIGHT: u16 = 1500;
 const PLOT_WINDOW_WIDTH: u16 = 800;
 const PLOT_MAX_POINTS: i32 = AGENTNO;
 
@@ -78,7 +80,7 @@ pub fn main() !void {
     }
     defer c.SDL_Quit();
 
-    const screen = c.SDL_CreateWindow("My Game Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, WINDOW_SIZE, WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse {
+    const screen = c.SDL_CreateWindow("Prey & Predators", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, WINDOW_SIZE, WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse {
         c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -91,7 +93,7 @@ pub fn main() !void {
     defer c.SDL_DestroyRenderer(renderer);
 
     // Create second window for plotting
-    const plot_window = c.SDL_CreateWindow("Plot Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, PLOT_WINDOW_WIDTH, PLOT_WINDOW_HEIGHT, c.SDL_WINDOW_OPENGL) orelse {
+    const plot_window = c.SDL_CreateWindow("Population Display", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, PLOT_WINDOW_WIDTH, PLOT_WINDOW_HEIGHT, c.SDL_WINDOW_OPENGL) orelse {
         c.SDL_Log("Unable to create plot window: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -123,6 +125,10 @@ pub fn main() !void {
 
     //Intializing our array of agents
     var ourArray: [AGENTNO]f.agent = undefined;
+    var predneuronx: @Vector(NUMBER_OF_RAYS, f32) = undefined;
+    var predneurony: @Vector(NUMBER_OF_RAYS, f32) = undefined;
+    var preyneuronx: @Vector(NUMBER_OF_RAYS, f32) = undefined;
+    var preyneurony: @Vector(NUMBER_OF_RAYS, f32) = undefined;
 
     //Initial conditions
     f.initialize(&ourArray);
@@ -143,6 +149,10 @@ pub fn main() !void {
         if (counter % SAVE_FREQUENCY == 0) {
             for (0..AGENTNO) |i| {
                 if (ourArray[i].species == f.Species.prey) {
+                    if (!ourArray[i].is_dead) {
+                        preyneuronx = ourArray[i].neuronx;
+                        preyneurony = ourArray[i].neurony;
+                    }
                     filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
                     var file = try fs.createFile(filename, .{});
                     defer file.close();
@@ -152,6 +162,10 @@ pub fn main() !void {
                         try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
                     }
                 } else {
+                    if (!ourArray[i].is_dead) {
+                        predneuronx = ourArray[i].neuronx;
+                        predneurony = ourArray[i].neurony;
+                    }
                     filename = try std.fmt.allocPrint(allocator1, "models/predator1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
                     var file = try fs.createFile(filename, .{});
                     defer file.close();
@@ -239,9 +253,32 @@ pub fn main() !void {
             theCount += 1;
         }
 
+        var tempCounter: u32 = 0;
         _ = c.SDL_RenderPresent(plot_renderer);
         if ((preyNo == 0) or (predatorNo == 0)) {
-            break;
+            if (LOOPS) {
+                for (0..AGENTNO - COPYNUM) |i| {
+                    ourArray[i].is_dead = false;
+                    if (tempCounter < COPYNUM) {
+                        ourArray[i].species = f.Species.prey;
+                        ourArray[i].neuronx = preyneuronx;
+                        ourArray[i].neurony = preyneurony;
+                        ourArray[i].posx = randomGenerator.float(f32) * GRID_SIZE;
+                        ourArray[i].posy = randomGenerator.float(f32) * GRID_SIZE;
+                        ourArray[AGENTNO - 1 - tempCounter].posx = randomGenerator.float(f32) * GRID_SIZE;
+                        ourArray[AGENTNO - 1 - tempCounter].posx = randomGenerator.float(f32) * GRID_SIZE;
+                        ourArray[AGENTNO - 1 - tempCounter].species = f.Species.predator;
+                        ourArray[AGENTNO - 1 - tempCounter].neuronx = predneuronx;
+                        ourArray[AGENTNO - 1 - tempCounter].neurony = predneurony;
+                        tempCounter += 1;
+                    } else {
+                        ourArray[i].posx = randomGenerator.float(f32) * GRID_SIZE;
+                        ourArray[i].posy = randomGenerator.float(f32) * GRID_SIZE;
+                    }
+                }
+            } else {
+                break;
+            }
         }
     }
     for (0..AGENTNO) |i| {
