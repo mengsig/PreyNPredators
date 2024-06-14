@@ -60,7 +60,6 @@ pub const agent = struct {
     energy: f32,
     split: f32,
     digestion: f32,
-    is_child: bool,
     is_dead: bool,
     neuronx: @Vector(NUMBER_OF_RAYS * 2, f32),
     neurony: @Vector(NUMBER_OF_RAYS * 2, f32),
@@ -68,7 +67,7 @@ pub const agent = struct {
 
     const Self = @This();
 
-    pub fn init(species: Species, posx: f32, posy: f32, velx: f32, vely: f32, energy: f32, split: f32, digestion: f32, is_child: bool, is_dead: bool, neuronx: @Vector(NUMBER_OF_RAYS * 2, f32), neurony: @Vector(NUMBER_OF_RAYS * 2, f32)) agent {
+    pub fn init(species: Species, posx: f32, posy: f32, velx: f32, vely: f32, energy: f32, split: f32, digestion: f32, is_dead: bool, neuronx: @Vector(NUMBER_OF_RAYS * 2, f32), neurony: @Vector(NUMBER_OF_RAYS * 2, f32)) agent {
         return agent{
             .species = species,
             .posx = posx,
@@ -78,7 +77,6 @@ pub const agent = struct {
             .energy = energy,
             .split = split,
             .digestion = digestion,
-            .is_child = is_child,
             .is_dead = is_dead,
             .neuronx = neuronx,
             .neurony = neurony,
@@ -349,9 +347,9 @@ pub fn initialize(array: *[AGENTNO]agent) void {
             }
         }
         if (randomGenerator.boolean()) {
-            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, true, false, neuronx, neurony);
+            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, false, neuronx, neurony);
         } else {
-            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, true, false, neuronx, neurony);
+            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, false, neuronx, neurony);
         }
     }
 }
