@@ -6,7 +6,7 @@ const c = @cImport({
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -17,14 +17,22 @@ pub fn build(b: *std.Build) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
-
+    var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const arguments = try std.process.argsAlloc(arena);
+    const lenghtInput = arguments.len;
+    const convertedPathName = arguments[lenghtInput - 1];
+    std.debug.print("Chosen main file: {s}\n", .{convertedPathName});
     const exe = b.addExecutable(.{
         .name = "PreyNPredators",
-        // In this case the main source file is merely a path, however, in more
+        // In this case the ma:whenin source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
+        //
+
+        .root_source_file = b.path(convertedPathName),
         .optimize = optimize,
+        .target = target,
     });
     exe.linkSystemLibrary("SDL2");
     exe.linkSystemLibrary("c");
@@ -60,7 +68,7 @@ pub fn build(b: *std.Build) void {
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
