@@ -2,7 +2,7 @@ This is an agent based prey and predator model where each agent has a little bra
 
 There are many parameters to play with, which, will be optimized soon!
 
-Also, please switch between the array and class (modular) approach by going into the "build.zig" file and changing the target from "main.zig" to "mainarray.zig" or vice-versa.
+This repository will be aim to always use the latest stable version of zig, which is version 0.13 as of this moment.
 
 -------------------------------
 IMPLEMENTED
@@ -52,9 +52,9 @@ $ brew install zig
 Otherwise, you have to do a manual installation of Zig (see https://github.com/ziglang/zig).
 
 
-In order to run and build the script, please ensure you have zig installed, and run the following command in your zig environment / directory.
+In order to run and build the script, please ensure you have zig installed, and run the following command in your zig environment / directory. Please note that this repository contains multiple main functions in the src/ folder. To select which to build and run, provide the path to the desired main file as an input argument.
 
-$ zig build run -Doptimize=ReleaseFast 
+$ zig build run -Doptimize=ReleaseFast -- src/main.zig
 
 ![Model](https://github.com/mengsig/PreyNPredators/blob/main/picture.png?raw=true)
 
