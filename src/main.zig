@@ -83,7 +83,6 @@ pub fn main() !void {
     // initializing stuff for saving
     const fs = std.fs.cwd();
     const allocator1 = std.heap.page_allocator;
-    var filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ 0, params.AGENTNO, 0 });
 
     //Test different allocators for speed
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -114,32 +113,37 @@ pub fn main() !void {
         counter += 1;
         // Save function
         if (counter % params.SAVE_FREQUENCY == 0) {
+            const filenamePrey = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}.txt", .{ counter, params.AGENTNO });
+            var filePrey = try fs.createFile(filenamePrey, .{});
+            defer filePrey.close();
+            var writerPrey = filePrey.writer();
+
+            const filenamePredator = try std.fmt.allocPrint(allocator1, "models/predator1_{}_{}.txt", .{ counter, params.AGENTNO });
+            var filePredator = try fs.createFile(filenamePredator, .{});
+            defer filePredator.close();
+            var writerPredator = filePredator.writer();
             for (0..params.AGENTNO) |i| {
-                if (ourArray[i].species == f.Species.prey) {
-                    if (!ourArray[i].is_dead) {
+                if (!ourArray[i].is_dead) {
+                    if (ourArray[i].species == f.Species.prey) {
                         preyneuronx = ourArray[i].neuronx;
                         preyneurony = ourArray[i].neurony;
-                    }
-                    filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ counter, params.AGENTNO, i });
-                    var file = try fs.createFile(filename, .{});
-                    defer file.close();
-                    var writer = file.writer();
-                    try writer.print("neuron1,neuron2\n", .{});
-                    for (0..params.NUMBER_OF_RAYS) |j| {
-                        try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
-                    }
-                } else {
-                    if (!ourArray[i].is_dead) {
+                        for (0..params.NUMBER_OF_RAYS) |j| {
+                            if (j != params.NUMBER_OF_RAYS - 1) {
+                                try writerPrey.print("{},{},", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            } else {
+                                try writerPrey.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            }
+                        }
+                    } else {
                         predneuronx = ourArray[i].neuronx;
                         predneurony = ourArray[i].neurony;
-                    }
-                    filename = try std.fmt.allocPrint(allocator1, "models/predator1_{}_{}_{}.txt", .{ counter, params.AGENTNO, i });
-                    var file = try fs.createFile(filename, .{});
-                    defer file.close();
-                    var writer = file.writer();
-                    try writer.print("neuron1,neuron2\n", .{});
-                    for (0..params.NUMBER_OF_RAYS) |j| {
-                        try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                        for (0..params.NUMBER_OF_RAYS) |j| {
+                            if (j != params.NUMBER_OF_RAYS - 1) {
+                                try writerPredator.print("{},{},", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            } else {
+                                try writerPredator.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            }
+                        }
                     }
                 }
             }
@@ -245,27 +249,6 @@ pub fn main() !void {
                 }
             } else {
                 break;
-            }
-        }
-    }
-    for (0..params.AGENTNO) |i| {
-        if (ourArray[i].species == f.Species.prey) {
-            filename = try std.fmt.allocPrint(allocator1, "models/prey1_{}_{}_{}.txt", .{ counter, params.AGENTNO, i });
-            var file = try fs.createFile(filename, .{});
-            defer file.close();
-            var writer = file.writer();
-            try writer.print("neuron1,neuron2\n", .{});
-            for (0..params.NUMBER_OF_RAYS) |j| {
-                try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
-            }
-        } else {
-            filename = try std.fmt.allocPrint(allocator1, "models/predator1_{}_{}_{}.txt", .{ counter, params.AGENTNO, i });
-            var file = try fs.createFile(filename, .{});
-            defer file.close();
-            var writer = file.writer();
-            try writer.print("neuron1,neuron2\n", .{});
-            for (0..params.NUMBER_OF_RAYS) |j| {
-                try writer.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
             }
         }
     }
