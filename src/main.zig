@@ -225,9 +225,9 @@ pub fn main() !void {
         count(&preyNo, &predatorNo, &ourArray);
 
         // Store the data
-        currentIndex = (currentIndex + 1) % PLOT_MAX_POINTS;
         preyData[currentIndex] = preyNo;
         predatorData[currentIndex] = predatorNo;
+        currentIndex = (currentIndex + 1) % PLOT_MAX_POINTS;
 
         // Render plot
         _ = c.SDL_SetRenderDrawColor(plot_renderer, 0x00, 0x00, 0x00, 0xFF); // Black background
