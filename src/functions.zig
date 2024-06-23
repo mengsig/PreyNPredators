@@ -94,8 +94,9 @@ pub const agent = struct {
                 if (array[i].is_dead) {
                     array[i].species = self.species;
                     array[i].is_dead = false;
-                    array[i].posx = self.posx + RADIUS;
-                    array[i].posy = self.posy + RADIUS;
+                    const angle: f32 = randomGenerator.float(f32) * 2 * 3.14159;
+                    array[i].posx = self.posx + math.cos(angle) * 2 * RADIUS;
+                    array[i].posy = self.posy + math.sin(angle) * 2 * RADIUS;
                     array[i].vel = self.vel;
                     array[i].theta = self.theta;
                     array[i].energy = ENERGY_MAX;
