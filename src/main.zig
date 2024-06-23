@@ -45,6 +45,7 @@ pub fn main() !void {
     }
     defer c.SDL_Quit();
 
+    // Main display
     const screen = c.SDL_CreateWindow("Prey & Predators", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, params.WINDOW_SIZE, params.WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse {
         c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
@@ -56,7 +57,20 @@ pub fn main() !void {
         return error.SDLInitializationFailed;
     };
     defer c.SDL_DestroyRenderer(renderer);
+    // Zoomed in Display
+    //if (params.FOLLOW) {
+    const follow_screen = c.SDL_CreateWindow("Prey & Predators", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, params.WINDOW_SIZE, params.WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse {
+        c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer c.SDL_DestroyWindow(screen);
 
+    const follow_renderer = c.SDL_CreateRenderer(follow_screen, -1, c.SDL_RENDERER_ACCELERATED) orelse {
+        c.SDL_Log("Unable to create renderer: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer c.SDL_DestroyRenderer(follow_renderer);
+    //}
     // Create second window for plotting
     const plot_window = c.SDL_CreateWindow("Population Display", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, params.PLOT_WINDOW_WIDTH, params.PLOT_WINDOW_HEIGHT, c.SDL_WINDOW_OPENGL) orelse {
         c.SDL_Log("Unable to create plot window: %s", c.SDL_GetError());
@@ -176,7 +190,10 @@ pub fn main() !void {
         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
         _ = c.SDL_RenderClear(renderer);
         for (0..params.AGENTNO) |i| {
-            if (!ourArray[i].is_dead) {
+            if (i == 0) {
+                _ = c.SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0x00, 0xFF); // Red
+                DrawCircle(renderer, ourArray[i].posx, ourArray[i].posy, params.RADIUS);
+            } else if (!ourArray[i].is_dead) {
                 switch (ourArray[i].species) {
                     f.Species.predator => {
                         _ = c.SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF); // Red
@@ -188,7 +205,116 @@ pub fn main() !void {
                 DrawCircle(renderer, ourArray[i].posx, ourArray[i].posy, params.RADIUS);
             }
         }
+        const leftx: f32 = ourArray[0].posx - (params.GRID_SIZE / params.ZOOM / 2);
+        const rightx: f32 = ourArray[0].posx + (params.GRID_SIZE / params.ZOOM / 2);
+        const diff: f32 = rightx - leftx;
+        const bottomy: f32 = ourArray[0].posy - (params.GRID_SIZE / params.ZOOM / 2);
+        if (params.FOLLOW) {
+            _ = c.SDL_SetRenderDrawColor(follow_renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
+            _ = c.SDL_RenderClear(follow_renderer);
+            for (0..params.AGENTNO) |i| {
+                if (!ourArray[i].is_dead) {
+                    if (i == 0) {
+                        _ = c.SDL_SetRenderDrawColor(follow_renderer, 0xFF, 0xFF, 0x00, 0xFF); // Red
+                        DrawCircle(follow_renderer, (ourArray[i].posx - leftx) / diff * params.GRID_SIZE, (ourArray[i].posy - bottomy) / diff * params.GRID_SIZE, params.RADIUS * params.ZOOM);
+
+                        var dx: f32 = 0;
+                        var dy: f32 = 0;
+                        var fx: f32 = 0;
+                        var fy: f32 = 0;
+                        var a: f32 = 0;
+                        var b: f32 = 0;
+                        var ct: f32 = 0;
+                        var discriminant: f32 = 0;
+                        var step: f32 = 0;
+                        var angle: f32 = 0;
+                        var t1: f32 = 0;
+                        var t2: f32 = 0;
+                        var t: f32 = 0;
+                        var endpointx: f32 = 0;
+                        var endpointy: f32 = 0;
+                        var x1: i32 = 0;
+                        var y1: i32 = 0;
+                        var x2: i32 = 0;
+                        var y2: i32 = 0;
+                        switch (ourArray[0].species) {
+                            f.Species.prey => {
+                                step = params.PREY_FOV / (params.NUMBER_OF_RAYS - 1);
+                                angle = -params.PREY_FOV / 2;
+                            },
+                            f.Species.predator => {
+                                step = params.PREDATOR_FOV / (params.NUMBER_OF_RAYS - 1);
+                                angle = -params.PREDATOR_FOV / 2;
+                            },
+                        }
+                        for (0..params.NUMBER_OF_RAYS) |_| {
+                            endpointx = ourArray[0].posx + (params.VISION_LENGTH * math.cos(angle + ourArray[0].theta));
+                            endpointy = ourArray[0].posy + (params.VISION_LENGTH * math.sin(angle + ourArray[0].theta));
+                            dx = endpointx - ourArray[0].posx;
+                            dy = endpointy - ourArray[0].posy;
+                            t = 100000.0;
+                            for (0..params.AGENTNO) |j| {
+                                if (ourArray[0].species != ourArray[j].species and (!ourArray[j].is_dead)) {
+                                    fx = ourArray[0].posx - ourArray[j].posx;
+                                    fy = ourArray[0].posy - ourArray[j].posy;
+                                    a = (dx * dx) + (dy * dy);
+                                    b = 2 * (fx * dx + fy * dy);
+                                    ct = (fx * fx + fy * fy) - (params.RADIUS2);
+                                    discriminant = b * b - 4 * a * ct;
+                                    if (discriminant > 0) {
+                                        discriminant = math.sqrt(discriminant);
+                                        t1 = (-b - discriminant) / (2 * a);
+                                        t2 = (-b + discriminant) / (2 * a);
+                                        if ((t1 > 0) and (t1 < 1)) {
+                                            if ((t2 > 0) and (t2 < t1)) {
+                                                if (t > t2) {
+                                                    t = t2;
+                                                }
+                                            } else {
+                                                if (t > t1) {
+                                                    t = t1;
+                                                }
+                                            }
+                                        }
+                                        if ((t2 > 0) and (t2 < 1)) {
+                                            if (t > t2) {
+                                                t = t2;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (t != 100000.0) {
+                                endpointx = ourArray[0].posx + dx * t;
+                                endpointy = ourArray[0].posy + dy * t;
+                            }
+                            y2 = @intFromFloat((endpointy - bottomy) / diff * params.GRID_SIZE);
+                            x2 = @intFromFloat((endpointx - leftx) / diff * params.GRID_SIZE);
+                            x1 = @intFromFloat((ourArray[0].posx - leftx) / diff * params.GRID_SIZE);
+                            y1 = @intFromFloat((ourArray[0].posy - bottomy) / diff * params.GRID_SIZE);
+                            //_ = c.SDL_SetRenderDrawColor(follow_renderer, 0xFF, 0xFF, 0x00, 0xFF); // Red
+                            //std.debug.print("{}, {} \n", .{ x2 - x1, y2 - y1 });
+                            //std.debug.print("{}, {}, {}, {} \n", .{});
+                            _ = c.SDL_RenderDrawLine(follow_renderer, x1, y1, x2, y2);
+                            angle += step;
+                        }
+                    } else if ((@abs(ourArray[i].posx - ourArray[0].posx) < params.GRID_SIZE / params.ZOOM / 2) and (@abs(ourArray[i].posy - ourArray[0].posy) < params.GRID_SIZE / params.ZOOM / 2)) {
+                        switch (ourArray[i].species) {
+                            f.Species.predator => {
+                                _ = c.SDL_SetRenderDrawColor(follow_renderer, 0xFF, 0x00, 0x00, 0xFF); // Red
+                            },
+                            f.Species.prey => {
+                                _ = c.SDL_SetRenderDrawColor(follow_renderer, 0x00, 0xFF, 0x00, 0xFF); // Green
+                            },
+                        }
+
+                        DrawCircle(follow_renderer, (ourArray[i].posx - leftx) / diff * params.GRID_SIZE, (ourArray[i].posy - bottomy) / diff * params.GRID_SIZE, params.RADIUS * params.ZOOM);
+                    }
+                }
+            }
+        }
         _ = c.SDL_RenderPresent(renderer);
+        _ = c.SDL_RenderPresent(follow_renderer);
 
         // Update plot data (dummy update for demonstration purposes)
         count(&preyNo, &predatorNo, &ourArray);
