@@ -5,9 +5,9 @@ const c = @cImport({
 const cstd = @cImport({
     @cInclude("stdio.h");
 });
-
+const params = @import("./conf/const.zig");
 const Thread = std.Thread;
-const NUM_THREADS = 12;
+const NUM_THREADS = params.NUM_THREADS;
 const SAVE_FREQUENCY = 5000;
 const LOOPS = false;
 const COPYNUM = 10;

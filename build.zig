@@ -31,12 +31,11 @@ pub fn build(b: *std.Build) !void {
         //
 
         .root_source_file = b.path(convertedPathName),
-        .optimize = optimize,
+        .optimize = .ReleaseFast, //optimize,
         .target = target,
     });
     exe.linkSystemLibrary("SDL2");
     exe.linkSystemLibrary("c");
-
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).

@@ -54,7 +54,7 @@ Otherwise, you have to do a manual installation of Zig (see https://github.com/z
 
 In order to run and build the script, please ensure you have zig installed, and run the following command in your zig environment / directory. Please note that this repository contains multiple main functions in the src/ folder. To select which to build and run, provide the path to the desired main file as an input argument.
 
-$ zig build run -Doptimize=ReleaseFast -- src/main.zig
+$ zig build run -- src/main.zig
 
 ![Model](https://github.com/mengsig/PreyNPredators/blob/main/picture.png?raw=true)
 
