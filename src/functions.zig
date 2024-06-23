@@ -226,17 +226,44 @@ pub const agent = struct {
         self.posx += self.vel * math.cos(self.theta) * DT;
         self.posy += self.vel * math.sin(self.theta) * DT;
         if (self.posx > GRID_SIZE) {
-            self.posx += -GRID_SIZE;
+            self.posx = 2 * GRID_SIZE - self.posx;
+            self.theta = math.pi - self.theta;
         }
+        //            if (math.sin(self.theta) < 0) {
+        //            } else {
+        //                self.theta += math.pi;
+        //            }
+        //        }
         if (self.posx < 0) {
-            self.posx += GRID_SIZE;
+            self.posx = -self.posx;
+            self.theta = math.pi - self.theta;
         }
+        //            if (math.sin(self.theta) < 0) {
+        //                self.theta += math.pi;
+        //            } else {
+        //                self.theta += -math.pi;
+        //            }
+        //        }
         if (self.posy > GRID_SIZE) {
-            self.posy += -GRID_SIZE;
+            self.posy = 2 * GRID_SIZE - self.posy;
+            self.theta = -self.theta;
         }
+        //            if (math.cos(self.theta) < 0) {
+        //                self.theta += -math.pi;
+        //            } else {
+        //                self.theta += math.pi;
+        //            }
+        //        }
         if (self.posy < 0) {
-            self.posy += GRID_SIZE;
+            self.posy = -self.posy;
+            self.theta = -self.theta;
         }
+        //            if (math.cos(self.theta) < 0) {
+        //                self.theta += math.pi;
+        //            } else {
+        //                self.theta += -math.pi;
+        //            }
+        //        }
     }
 
     pub fn update_energy(self: *Self) void {
