@@ -49,13 +49,13 @@ const MOMENTUM: f32 = 0.95;
 // Plotting stuff
 const PLOT_WINDOW_HEIGHT: u16 = 1500;
 const PLOT_WINDOW_WIDTH: u16 = 800;
-const PLOT_MAX_POINTS: i32 = AGENTNO;
+const PLOT_MAX_POINTS: i32 = @intCast(AGENTNO);
 
 // our random number generator
 var prng = std.rand.DefaultPrng.init(0);
 const randomGenerator = prng.random();
 
-pub fn count(preyNo: *u32, predatorNo: *u32, array: *[AGENTNO]f.agent) void {
+pub fn count(preyNo: *u16, predatorNo: *u16, array: *[AGENTNO]f.agent) void {
     preyNo.* = 0;
     predatorNo.* = 0;
     for (0..AGENTNO) |i| {
@@ -106,11 +106,13 @@ pub fn main() !void {
     defer c.SDL_DestroyRenderer(plot_renderer);
 
     //Plotting stuff
-    var preyNo: u32 = 0;
-    var predatorNo: u32 = 0;
+    var preyNo: u16 = 0;
+    var predatorNo: u16 = 0;
     var theCount: i32 = 0;
-    var preyData: [PLOT_MAX_POINTS]u32 = undefined;
-    var predatorData: [PLOT_MAX_POINTS]u32 = undefined;
+    var preyData: [PLOT_MAX_POINTS]u16 = undefined;
+    var predatorData: [PLOT_MAX_POINTS]u16 = undefined;
+    preyData[0] = 0;
+    predatorData[0] = 0;
     var currentIndex: u32 = 0;
 
     // initializing stuff for saving
@@ -223,9 +225,9 @@ pub fn main() !void {
         count(&preyNo, &predatorNo, &ourArray);
 
         // Store the data
+        currentIndex = (currentIndex + 1) % PLOT_MAX_POINTS;
         preyData[currentIndex] = preyNo;
         predatorData[currentIndex] = predatorNo;
-        currentIndex = (currentIndex + 1) % PLOT_MAX_POINTS;
 
         // Render plot
         _ = c.SDL_SetRenderDrawColor(plot_renderer, 0x00, 0x00, 0x00, 0xFF); // Black background
@@ -237,11 +239,11 @@ pub fn main() !void {
             const x2 = @divFloor(((theCount + 1) * PLOT_WINDOW_WIDTH), PLOT_MAX_POINTS);
 
             const newCount: u32 = @intCast(theCount);
-            const preyY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
-            const preyY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+            const preyY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - (preyData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * (PLOT_WINDOW_HEIGHT / PLOT_MAX_POINTS));
+            const preyY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - (preyData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * (PLOT_WINDOW_HEIGHT / PLOT_MAX_POINTS));
 
-            const predatorY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
-            const predatorY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+            const predatorY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - (predatorData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * (PLOT_WINDOW_HEIGHT / PLOT_MAX_POINTS));
+            const predatorY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - (predatorData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * (PLOT_WINDOW_HEIGHT / PLOT_MAX_POINTS));
 
             // Draw prey line
             _ = c.SDL_SetRenderDrawColor(plot_renderer, 0, 255, 0, 255); // Green
