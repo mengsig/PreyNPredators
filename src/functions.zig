@@ -5,35 +5,9 @@ const c = @cImport({
 const cstd = @cImport({
     @cInclude("stdio.h");
 });
+const params = @import("./conf/const.zig");
 const Thread = std.Thread;
-const NUM_THREADS = 12;
-
 const math = @import("std").math;
-const DT: f32 = 0.37;
-const GRID_SIZE: i32 = 1500;
-const TOTAL_SIZE: i32 = GRID_SIZE * GRID_SIZE;
-const CELL_SIZE: i8 = 1;
-const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
-
-const ENERGY_MAX: f32 = 100.0;
-const PREY_ENERGY_GAIN: f32 = 2.5;
-const PREY_LOSS_FACTOR: f32 = 10;
-const SPLIT_ADD: f32 = 1.0 * DT;
-const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 8;
-const ENERGY_SCALE_LOSS: f32 = 0.025;
-const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 5.0;
-const AGENTNO: u16 = 750;
-const RADIUS2: f32 = RADIUS * RADIUS;
-const SPLIT_MAX: f32 = 100.0;
-const SPLIT_DECAY: f32 = 0.2 * DT;
-const DIGESTION_MAX: f32 = 25;
-const NUMBER_OF_RAYS: usize = 30;
-const VISION_LENGTH: f32 = 750;
-const PREY_FOV: f32 = 360.0 / 180.0 * math.pi;
-const PREDATOR_FOV: f32 = 80.0 / 180.0 * math.pi;
-const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
-const MOMENTUM: f32 = 0.95;
 
 // our random number generator
 var prng = std.rand.DefaultPrng.init(0);
@@ -62,13 +36,13 @@ pub const agent = struct {
     split: f32,
     digestion: f32,
     is_dead: bool,
-    neuronx: @Vector(NUMBER_OF_RAYS, f32),
-    neurony: @Vector(NUMBER_OF_RAYS, f32),
-    vision: @Vector(NUMBER_OF_RAYS, f32),
+    neuronx: @Vector(params.NUMBER_OF_RAYS, f32),
+    neurony: @Vector(params.NUMBER_OF_RAYS, f32),
+    vision: @Vector(params.NUMBER_OF_RAYS, f32),
 
     const Self = @This();
 
-    pub fn init(species: Species, posx: f32, posy: f32, velx: f32, vely: f32, energy: f32, split: f32, digestion: f32, is_dead: bool, neuronx: @Vector(NUMBER_OF_RAYS, f32), neurony: @Vector(NUMBER_OF_RAYS, f32)) agent {
+    pub fn init(species: Species, posx: f32, posy: f32, velx: f32, vely: f32, energy: f32, split: f32, digestion: f32, is_dead: bool, neuronx: @Vector(params.NUMBER_OF_RAYS, f32), neurony: @Vector(params.NUMBER_OF_RAYS, f32)) agent {
         return agent{
             .species = species,
             .posx = posx,
@@ -85,30 +59,30 @@ pub const agent = struct {
         };
     }
 
-    pub fn update_children(self: *Self, array: *[AGENTNO]agent) void {
-        if (self.split > SPLIT_MAX) {
-            self.split += -SPLIT_MAX;
+    pub fn update_children(self: *Self, array: *[params.AGENTNO]agent) void {
+        if (self.split > params.SPLIT_MAX) {
+            self.split += -params.SPLIT_MAX;
             var set: bool = false;
             var i: u32 = 0;
-            while ((set) or (i < AGENTNO - 1)) {
+            while ((set) or (i < params.AGENTNO - 1)) {
                 if (array[i].is_dead) {
                     array[i].species = self.species;
                     array[i].is_dead = false;
                     const angle: f32 = randomGenerator.float(f32) * 2 * 3.14159;
-                    array[i].posx = self.posx + math.cos(angle) * 2 * RADIUS;
-                    array[i].posy = self.posy + math.sin(angle) * 2 * RADIUS;
+                    array[i].posx = self.posx + math.cos(angle) * 2 * params.RADIUS;
+                    array[i].posy = self.posy + math.sin(angle) * 2 * params.RADIUS;
                     array[i].vel = self.vel;
                     array[i].theta = self.theta;
-                    array[i].energy = ENERGY_MAX;
+                    array[i].energy = params.ENERGY_MAX;
                     array[i].split = 0;
                     array[i].digestion = 0;
-                    for (0..NUMBER_OF_RAYS) |j| {
-                        if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
+                    for (0..params.NUMBER_OF_RAYS) |j| {
+                        if (randomGenerator.float(f32) < 2 / params.FNUMBER_OF_RAYS) {
                             array[i].neuronx[j] = self.neuronx[j] + (randomGenerator.float(f32) - 0.5) / 5;
                         } else {
                             array[i].neuronx[j] = self.neuronx[j];
                         }
-                        if (randomGenerator.float(f32) < 2 / FNUMBER_OF_RAYS) {
+                        if (randomGenerator.float(f32) < 2 / params.FNUMBER_OF_RAYS) {
                             array[i].neurony[j] = self.neurony[j] + (randomGenerator.float(f32) - 0.5) / 5;
                         } else {
                             array[i].neurony[j] = self.neurony[j];
@@ -121,7 +95,7 @@ pub const agent = struct {
             }
         }
     }
-    pub fn update_vision(self: *Self, array: *[AGENTNO]agent) void {
+    pub fn update_vision(self: *Self, array: *[params.AGENTNO]agent) void {
         var dx: f32 = 0;
         var dy: f32 = 0;
         var fx: f32 = 0;
@@ -139,27 +113,27 @@ pub const agent = struct {
         var endpointy: f32 = 0;
         switch (self.species) {
             Species.prey => {
-                step = PREY_FOV / (NUMBER_OF_RAYS - 1);
-                angle = -PREY_FOV / 2;
+                step = params.PREY_FOV / (params.NUMBER_OF_RAYS - 1);
+                angle = -params.PREY_FOV / 2;
             },
             Species.predator => {
-                step = PREDATOR_FOV / (NUMBER_OF_RAYS - 1);
-                angle = -PREDATOR_FOV / 2;
+                step = params.PREDATOR_FOV / (params.NUMBER_OF_RAYS - 1);
+                angle = -params.PREDATOR_FOV / 2;
             },
         }
-        for (0..NUMBER_OF_RAYS) |i| {
-            endpointx = self.posx + (VISION_LENGTH * math.cos(angle + self.theta));
-            endpointy = self.posy + (VISION_LENGTH * math.sin(angle + self.theta));
+        for (0..params.NUMBER_OF_RAYS) |i| {
+            endpointx = self.posx + (params.VISION_LENGTH * math.cos(angle + self.theta));
+            endpointy = self.posy + (params.VISION_LENGTH * math.sin(angle + self.theta));
             dx = endpointx - self.posx;
             dy = endpointy - self.posy;
             t = 100000.0;
-            for (0..AGENTNO) |j| {
+            for (0..params.AGENTNO) |j| {
                 if (self.species != array[j].species and (!array[j].is_dead)) {
                     fx = self.posx - array[j].posx;
                     fy = self.posy - array[j].posy;
                     a = (dx * dx) + (dy * dy);
                     b = 2 * (fx * dx + fy * dy);
-                    ct = (fx * fx + fy * fy) - (RADIUS2);
+                    ct = (fx * fx + fy * fy) - (params.RADIUS2);
                     discriminant = b * b - 4 * a * ct;
                     if (discriminant > 0) {
                         discriminant = math.sqrt(discriminant);
@@ -194,11 +168,11 @@ pub const agent = struct {
     }
 
     pub fn update_velocity(self: *Self) void {
-        const xvec: @Vector(NUMBER_OF_RAYS, f32) = self.vision * self.neuronx;
-        const yvec: @Vector(NUMBER_OF_RAYS, f32) = self.vision * self.neurony;
+        const xvec: @Vector(params.NUMBER_OF_RAYS, f32) = self.vision * self.neuronx;
+        const yvec: @Vector(params.NUMBER_OF_RAYS, f32) = self.vision * self.neurony;
         var dsum: f32 = 0;
         var thetasum: f32 = 0;
-        for (0..NUMBER_OF_RAYS) |i| {
+        for (0..params.NUMBER_OF_RAYS) |i| {
             dsum += xvec[i];
             thetasum += yvec[i];
         }
@@ -208,7 +182,7 @@ pub const agent = struct {
             thetasum = 0.2;
         }
         if (self.vel * self.vel < 1e-5) {
-            self.theta += 6.28 / 100.0 * DT;
+            self.theta += 6.28 / 100.0 * params.DT;
         }
         if (self.energy == 0) {
             self.vel = 0;
@@ -216,25 +190,25 @@ pub const agent = struct {
                 self.is_dead = true;
             }
         } else {
-            self.vel += dsum * DT;
+            self.vel += dsum * params.DT;
         }
-        self.theta += thetasum / 10 * DT;
-        self.vel = self.vel * MOMENTUM;
+        self.theta += thetasum / 10 * params.DT;
+        self.vel = self.vel * params.MOMENTUM;
     }
 
     pub fn update_position(self: *Self) void {
-        self.posx += self.vel * math.cos(self.theta) * DT;
-        self.posy += self.vel * math.sin(self.theta) * DT;
-        if (self.posx > GRID_SIZE) {
-            self.posx = 2 * GRID_SIZE - self.posx;
+        self.posx += self.vel * math.cos(self.theta) * params.DT;
+        self.posy += self.vel * math.sin(self.theta) * params.DT;
+        if (self.posx > params.GRID_SIZE) {
+            self.posx = 2 * params.GRID_SIZE - self.posx;
             self.theta = math.pi - self.theta;
         }
         if (self.posx < 0) {
             self.posx = -self.posx;
             self.theta = math.pi - self.theta;
         }
-        if (self.posy > GRID_SIZE) {
-            self.posy = 2 * GRID_SIZE - self.posy;
+        if (self.posy > params.GRID_SIZE) {
+            self.posy = 2 * params.GRID_SIZE - self.posy;
             self.theta = -self.theta;
         }
         if (self.posy < 0) {
@@ -248,9 +222,9 @@ pub const agent = struct {
             // remember that zero is prey
             Species.prey => {
                 if (self.vel < 0.001) {
-                    self.energy += PREY_ENERGY_GAIN;
+                    self.energy += params.PREY_ENERGY_GAIN;
                 } else {
-                    self.energy += (-self.vel * ENERGY_SCALE_LOSS * PREY_LOSS_FACTOR);
+                    self.energy += (-self.vel * params.ENERGY_SCALE_LOSS * params.PREY_LOSS_FACTOR);
                     if (self.energy < 0) {
                         self.energy = 0;
                     }
@@ -258,32 +232,32 @@ pub const agent = struct {
             },
             // remember that one is predator
             Species.predator => {
-                self.energy += (-self.vel * ENERGY_SCALE_LOSS) - DEFAULT_ENERGY_LOSS;
+                self.energy += (-self.vel * params.ENERGY_SCALE_LOSS) - params.DEFAULT_ENERGY_LOSS;
             },
         }
     }
 
-    pub fn eats(self: *Self, array: *[AGENTNO]agent) void {
+    pub fn eats(self: *Self, array: *[params.AGENTNO]agent) void {
         if (self.species == Species.predator) {
             var distance: f32 = 0;
             var xdistance: f32 = 0;
             var ydistance: f32 = 0;
-            for (0..AGENTNO) |i| {
+            for (0..params.AGENTNO) |i| {
                 if ((!array[i].is_dead) and (array[i].species == Species.prey)) {
                     xdistance = (self.posx - array[i].posx) * (self.posx - array[i].posx);
-                    if (xdistance < 4 * RADIUS2) {
+                    if (xdistance < 4 * params.RADIUS2) {
                         ydistance = (self.posy - array[i].posy) * (self.posy - array[i].posy);
-                        if (ydistance < 4 * RADIUS2) {
+                        if (ydistance < 4 * params.RADIUS2) {
                             distance = xdistance + ydistance;
-                            if (distance < 4 * RADIUS2) {
+                            if (distance < 4 * params.RADIUS2) {
                                 if (self.digestion == 0) {
                                     array[i].is_dead = true;
-                                    self.energy += ENERGY_MAX / 2;
-                                    if (self.energy > ENERGY_MAX) {
-                                        self.energy = ENERGY_MAX;
+                                    self.energy += params.ENERGY_MAX / 2;
+                                    if (self.energy > params.ENERGY_MAX) {
+                                        self.energy = params.ENERGY_MAX;
                                     }
-                                    self.split += SPLIT_MAX / 2;
-                                    self.digestion = DIGESTION_MAX;
+                                    self.split += params.SPLIT_MAX / 2;
+                                    self.digestion = params.DIGESTION_MAX;
                                     break;
                                 }
                             }
@@ -293,12 +267,12 @@ pub const agent = struct {
             }
         }
         if (self.species == Species.prey) {
-            self.split += SPLIT_ADD / (1 + @sqrt(abs(self.vel)));
+            self.split += params.SPLIT_ADD / (1 + @sqrt(abs(self.vel)));
         }
     }
 
     pub fn update_digestion(self: *Self) void {
-        self.digestion += -DEFAULT_DIGESTION_RATE;
+        self.digestion += -params.DEFAULT_DIGESTION_RATE;
         if (self.digestion < 0) {
             self.digestion = 0;
         }
@@ -311,12 +285,12 @@ pub const agent = struct {
     }
 };
 
-pub fn initialize(array: *[AGENTNO]agent) void {
-    var neuronx: @Vector(NUMBER_OF_RAYS, f32) = undefined;
-    var neurony: @Vector(NUMBER_OF_RAYS, f32) = undefined;
-    for (0..AGENTNO) |i| {
-        for (0..NUMBER_OF_RAYS) |j| {
-            if (randomGenerator.float(f32) < 0.2 / FNUMBER_OF_RAYS) {
+pub fn initialize(array: *[params.AGENTNO]agent) void {
+    var neuronx: @Vector(params.NUMBER_OF_RAYS, f32) = undefined;
+    var neurony: @Vector(params.NUMBER_OF_RAYS, f32) = undefined;
+    for (0..params.AGENTNO) |i| {
+        for (0..params.NUMBER_OF_RAYS) |j| {
+            if (randomGenerator.float(f32) < 0.2 / params.FNUMBER_OF_RAYS) {
                 neuronx[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
                 neurony[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
             } else {
@@ -325,21 +299,21 @@ pub fn initialize(array: *[AGENTNO]agent) void {
             }
         }
         if (randomGenerator.boolean()) {
-            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, false, neuronx, neurony);
+            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
         } else {
-            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * GRID_SIZE, randomGenerator.float(f32) * GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * ENERGY_MAX, randomGenerator.float(f32) * SPLIT_MAX, 0.0, false, neuronx, neurony);
+            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
         }
     }
 }
 
-pub fn update_agent(array: *[AGENTNO]agent, ourAgent: *agent) !void {
+pub fn update_agent(array: *[params.AGENTNO]agent, ourAgent: *agent) !void {
     if (!ourAgent.is_dead) {
         ourAgent.update_vision(array);
         ourAgent.update_velocity();
         ourAgent.update_position();
         ourAgent.update_energy();
-        if (ourAgent.energy > ENERGY_MAX) {
-            ourAgent.energy = ENERGY_MAX;
+        if (ourAgent.energy > params.ENERGY_MAX) {
+            ourAgent.energy = params.ENERGY_MAX;
         }
 
         ourAgent.update_death();
@@ -349,7 +323,7 @@ pub fn update_agent(array: *[AGENTNO]agent, ourAgent: *agent) !void {
     }
 }
 pub const UpdateContext = struct {
-    array: *[AGENTNO]agent,
+    array: *[params.AGENTNO]agent,
     start: usize,
     end: usize,
 };

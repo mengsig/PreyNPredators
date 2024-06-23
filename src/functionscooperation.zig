@@ -5,6 +5,7 @@ const c = @cImport({
 const cstd = @cImport({
     @cInclude("stdio.h");
 });
+
 const Thread = std.Thread;
 const NUM_THREADS = 12;
 

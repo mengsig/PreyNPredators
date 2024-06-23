@@ -5,51 +5,18 @@ const c = @cImport({
 const cstd = @cImport({
     @cInclude("stdio.h");
 });
-
-const f = @import("array.zig");
+const params = @import("./conf/const.zig");
 const Thread = std.Thread;
-const NUM_THREADS = 12;
-const SAVE_FREQUENCY = 5000;
-
 const math = @import("std").math;
-const DT: f32 = 0.37;
-const GRID_SIZE: i32 = 1500;
-const TOTAL_SIZE: i32 = GRID_SIZE * GRID_SIZE;
-const CELL_SIZE: i8 = 1;
-const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
-
-const PLOT_WINDOW_HEIGHT: u16 = 600;
-const PLOT_WINDOW_WIDTH: u16 = 800;
-
-const ENERGY_MAX: f32 = 100.0;
-const PREY_ENERGY_GAIN: f32 = 2.5;
-const PREY_LOSS_FACTOR: f32 = 10;
-const SPLIT_ADD: f32 = 1.0 * DT;
-const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 5;
-const ENERGY_SCALE_LOSS: f32 = 0.025;
-const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 5.0;
-const AGENTNO: u16 = 750;
-const RADIUS2: f32 = RADIUS * RADIUS;
-const SPLIT_MAX: f32 = 100.0;
-const SPLIT_DECAY: f32 = 0.2 * DT;
-const DIGESTION_MAX: f32 = 25;
-const NUMBER_OF_RAYS: usize = 30;
-const VISION_LENGTH: f32 = 300;
-const PREY_FOV: f32 = 300.0 / 180.0 * math.pi;
-const PREDATOR_FOV: f32 = 80.0 / 180.0 * math.pi;
-const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
-const MOMENTUM: f32 = 0.95;
-const PLOT_MAX_POINTS: i32 = AGENTNO;
-
+const f = @import("array.zig");
 // our random number generator
 var prng = std.rand.DefaultPrng.init(0);
 const randomGenerator = prng.random();
 
-pub fn count(is_dead: *[AGENTNO]bool, species: *[AGENTNO]f.Species, preyNo: *u32, predatorNo: *u32) void {
+pub fn count(is_dead: *[params.AGENTNO]bool, species: *[params.AGENTNO]f.Species, preyNo: *u32, predatorNo: *u32) void {
     preyNo.* = 0;
     predatorNo.* = 0;
-    for (0..AGENTNO) |i| {
+    for (0..params.AGENTNO) |i| {
         if (!is_dead[i]) {
             switch (species[i]) {
                 f.Species.prey => {
@@ -70,7 +37,7 @@ pub fn main() !void {
     }
     defer c.SDL_Quit();
 
-    const screen = c.SDL_CreateWindow("My Game Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, WINDOW_SIZE, WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse {
+    const screen = c.SDL_CreateWindow("My Game Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, params.WINDOW_SIZE, params.WINDOW_SIZE, c.SDL_WINDOW_OPENGL) orelse {
         c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -83,7 +50,7 @@ pub fn main() !void {
     defer c.SDL_DestroyRenderer(renderer);
 
     // Create second window for plotting
-    const plot_window = c.SDL_CreateWindow("Plot Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, PLOT_WINDOW_WIDTH, PLOT_WINDOW_HEIGHT, c.SDL_WINDOW_OPENGL) orelse {
+    const plot_window = c.SDL_CreateWindow("Plot Window", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, params.PLOT_WINDOW_WIDTH, params.PLOT_WINDOW_HEIGHT, c.SDL_WINDOW_OPENGL) orelse {
         c.SDL_Log("Unable to create plot window: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -97,16 +64,16 @@ pub fn main() !void {
 
     const fs = std.fs.cwd();
     const allocator = std.heap.page_allocator;
-    var filename = try std.fmt.allocPrint(allocator, "models/prey1_{}_{}_{}.txt", .{ 0, AGENTNO, 0 });
+    var filename = try std.fmt.allocPrint(allocator, "models/prey1_{}_{}_{}.txt", .{ 0, params.AGENTNO, 0 });
 
     //Plotting stuff
     var preyNo: u32 = 0;
     var predatorNo: u32 = 0;
     var theCount: i32 = 0;
-    var preyData: [PLOT_MAX_POINTS]u32 = undefined;
-    var predatorData: [PLOT_MAX_POINTS]u32 = undefined;
+    var preyData: [params.PLOT_MAX_POINTS]u32 = undefined;
+    var predatorData: [params.PLOT_MAX_POINTS]u32 = undefined;
     var currentIndex: u32 = 0;
-    for (0..PLOT_MAX_POINTS) |i| {
+    for (0..params.PLOT_MAX_POINTS) |i| {
         preyData[i] = 0;
         predatorData[i] = 0;
     }
@@ -114,51 +81,51 @@ pub fn main() !void {
     //Test different allocators for speed
     //    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     //    const allocator = gpa.allocator();
-    //    const chunk_size = AGENTNO / NUM_THREADS;
+    //    const chunk_size = params.AGENTNO / params.NUM_THREADS;
 
     //Initial conditions
 
-    var posx: [AGENTNO]f32 = f.initialize_posx();
-    var posy: [AGENTNO]f32 = f.initialize_posy();
-    var vel: [AGENTNO]f32 = f.initialize_vel();
-    var theta: [AGENTNO]f32 = f.initialize_theta();
-    var energy: [AGENTNO]f32 = f.initialize_energy();
-    var split: [AGENTNO]f32 = f.initialize_split();
-    var digestion: [AGENTNO]f32 = f.initialize_digestion();
-    var species: [AGENTNO]f.Species = f.initialize_species();
-    var is_dead: [AGENTNO]bool = f.initialize_is_dead();
-    var nn: [AGENTNO]f.neuralnet = f.initialize_nn();
+    var posx: [params.AGENTNO]f32 = f.initialize_posx();
+    var posy: [params.AGENTNO]f32 = f.initialize_posy();
+    var vel: [params.AGENTNO]f32 = f.initialize_vel();
+    var theta: [params.AGENTNO]f32 = f.initialize_theta();
+    var energy: [params.AGENTNO]f32 = f.initialize_energy();
+    var split: [params.AGENTNO]f32 = f.initialize_split();
+    var digestion: [params.AGENTNO]f32 = f.initialize_digestion();
+    var species: [params.AGENTNO]f.Species = f.initialize_species();
+    var is_dead: [params.AGENTNO]bool = f.initialize_is_dead();
+    var nn: [params.AGENTNO]f.neuralnet = f.initialize_nn();
 
     //Create threads array for parallel processing
-    //    var threads = try allocator.alloc(std.Thread, NUM_THREADS);
+    //    var threads = try allocator.alloc(std.Thread, params.NUM_THREADS);
     //    defer allocator.free(threads);
 
     //Create contexts array for parallel processing
-    //    var contexts = try allocator.alloc(f.UpdateContext, NUM_THREADS);
+    //    var contexts = try allocator.alloc(f.UpdateContext, params.NUM_THREADS);
     //    defer allocator.free(contexts);
 
     var quit: bool = false;
     var counter: u32 = 0;
     while (!quit) {
         counter += 1;
-        if (counter % SAVE_FREQUENCY == 0) {
-            for (0..AGENTNO) |i| {
+        if (counter % params.SAVE_FREQUENCY == 0) {
+            for (0..params.AGENTNO) |i| {
                 if (species[i] == f.Species.prey) {
-                    filename = try std.fmt.allocPrint(allocator, "models/prey1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
+                    filename = try std.fmt.allocPrint(allocator, "models/prey1_{}_{}_{}.txt", .{ counter, params.AGENTNO, i });
                     var file = try fs.createFile(filename, .{});
                     defer file.close();
                     var writer = file.writer();
                     try writer.print("neuron1,neuron2\n", .{});
-                    for (0..NUMBER_OF_RAYS) |j| {
+                    for (0..params.NUMBER_OF_RAYS) |j| {
                         try writer.print("{},{}\n", .{ nn[i].neuronx[j], nn[i].neurony[j] });
                     }
                 } else {
-                    filename = try std.fmt.allocPrint(allocator, "models/predator1_{}_{}_{}.txt", .{ counter, AGENTNO, i });
+                    filename = try std.fmt.allocPrint(allocator, "models/predator1_{}_{}_{}.txt", .{ counter, params.AGENTNO, i });
                     var file = try fs.createFile(filename, .{});
                     defer file.close();
                     var writer = file.writer();
                     try writer.print("neuron1,neuron2\n", .{});
-                    for (0..NUMBER_OF_RAYS) |j| {
+                    for (0..params.NUMBER_OF_RAYS) |j| {
                         try writer.print("{},{}\n", .{ nn[i].neuronx[j], nn[i].neurony[j] });
                     }
                 }
@@ -175,9 +142,9 @@ pub fn main() !void {
             }
         }
         try f.update_agents(&posx, &posy, &vel, &theta, &energy, &split, &digestion, &species, &is_dead, &nn);
-        //        for (0..NUM_THREADS) |t| {
+        //        for (0..params.NUM_THREADS) |t| {
         //            const start = t * chunk_size;
-        //            const end = if (t == NUM_THREADS - 1) AGENTNO else start + chunk_size;
+        //            const end = if (t == params.NUM_THREADS - 1) params.AGENTNO else start + chunk_size;
         //            contexts[t] = f.UpdateContext{ .array = &ourArray, .start = start, .end = end };
         //            threads[t] = try std.Thread.spawn(.{
         //                .stack_size = 512 * 512, //  Adjust depending on Number of Agents.
@@ -185,13 +152,13 @@ pub fn main() !void {
         //            }, f.update_agent_chunk, .{&contexts[t]});
         //        }
         //
-        //        for (0..NUM_THREADS) |t| {
+        //        for (0..params.NUM_THREADS) |t| {
         //            threads[t].join();
         //        }
 
         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black color
         _ = c.SDL_RenderClear(renderer);
-        for (0..AGENTNO) |i| {
+        for (0..params.AGENTNO) |i| {
             if (!is_dead[i]) {
                 switch (species[i]) {
                     f.Species.predator => {
@@ -201,7 +168,7 @@ pub fn main() !void {
                         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF); // Green
                     },
                 }
-                DrawCircle(renderer, posx[i], posy[i], RADIUS);
+                DrawCircle(renderer, posx[i], posy[i], params.RADIUS);
             }
         }
         _ = c.SDL_RenderPresent(renderer);
@@ -212,7 +179,7 @@ pub fn main() !void {
         // Store the data
         var counter1: u32 = 0;
         var counter2: u32 = 0;
-        for (0..AGENTNO) |i| {
+        for (0..params.AGENTNO) |i| {
             if (species[i] == f.Species.prey) {
                 counter1 += 1;
             } else {
@@ -221,23 +188,23 @@ pub fn main() !void {
         }
         preyData[currentIndex] = preyNo;
         predatorData[currentIndex] = predatorNo;
-        currentIndex = (currentIndex + 1) % PLOT_MAX_POINTS;
+        currentIndex = (currentIndex + 1) % params.PLOT_MAX_POINTS;
 
         // Render plot
         _ = c.SDL_SetRenderDrawColor(plot_renderer, 0x00, 0x00, 0x00, 0xFF); // Black background
         _ = c.SDL_RenderClear(plot_renderer);
 
         theCount = 0;
-        while (theCount < PLOT_MAX_POINTS - 1) {
-            const x1 = @divFloor((theCount * PLOT_WINDOW_WIDTH), PLOT_MAX_POINTS);
-            const x2 = @divFloor(((theCount + 1) * PLOT_WINDOW_WIDTH), PLOT_MAX_POINTS);
+        while (theCount < params.PLOT_MAX_POINTS - 1) {
+            const x1 = @divFloor((theCount * params.PLOT_WINDOW_WIDTH), params.PLOT_MAX_POINTS);
+            const x2 = @divFloor(((theCount + 1) * params.PLOT_WINDOW_WIDTH), params.PLOT_MAX_POINTS);
 
             const newCount: u32 = @intCast(theCount);
-            const preyY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
-            const preyY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+            const preyY1: i32 = @intCast(params.PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount) % params.PLOT_MAX_POINTS]) * params.PLOT_WINDOW_HEIGHT), params.PLOT_MAX_POINTS));
+            const preyY2: i32 = @intCast(params.PLOT_WINDOW_HEIGHT - @divFloor(((preyData[(currentIndex + newCount + 1) % params.PLOT_MAX_POINTS]) * params.PLOT_WINDOW_HEIGHT), params.PLOT_MAX_POINTS));
 
-            const predatorY1: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
-            const predatorY2: i32 = @intCast(PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount + 1) % PLOT_MAX_POINTS]) * PLOT_WINDOW_HEIGHT), PLOT_MAX_POINTS));
+            const predatorY1: i32 = @intCast(params.PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount) % params.PLOT_MAX_POINTS]) * params.PLOT_WINDOW_HEIGHT), params.PLOT_MAX_POINTS));
+            const predatorY2: i32 = @intCast(params.PLOT_WINDOW_HEIGHT - @divFloor(((predatorData[(currentIndex + newCount + 1) % params.PLOT_MAX_POINTS]) * params.PLOT_WINDOW_HEIGHT), params.PLOT_MAX_POINTS));
 
             // Draw prey line
             _ = c.SDL_SetRenderDrawColor(plot_renderer, 0, 255, 0, 255); // Green
@@ -255,13 +222,13 @@ pub fn main() !void {
         }
     }
 
-    for (0..AGENTNO) |i| {
-        filename = try std.fmt.allocPrint(allocator, "models/prey_{}_{}_{}.txt", .{ counter, AGENTNO, i });
+    for (0..params.AGENTNO) |i| {
+        filename = try std.fmt.allocPrint(allocator, "models/prey_{}_{}_{}.txt", .{ counter, params.AGENTNO, i });
         var file = try fs.createFile(filename, .{});
         defer file.close();
         var writer = file.writer();
         try writer.print("neuron1,neuron2\n", .{});
-        for (0..NUMBER_OF_RAYS) |j| {
+        for (0..params.NUMBER_OF_RAYS) |j| {
             try writer.print("{},{}\n", .{ nn[i].neuronx[j], nn[i].neurony[j] });
         }
     }

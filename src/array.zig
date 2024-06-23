@@ -6,40 +6,10 @@ const cstd = @cImport({
     @cInclude("stdio.h");
 });
 
-const f = @import("array.zig");
+const params = @import("./conf/const.zig");
 const Thread = std.Thread;
-const NUM_THREADS = 12;
-
 const math = @import("std").math;
-const DT: f32 = 0.37;
-const GRID_SIZE: i32 = 1500;
-const TOTAL_SIZE: i32 = GRID_SIZE * GRID_SIZE;
-const CELL_SIZE: i8 = 1;
-const WINDOW_SIZE: i32 = CELL_SIZE * GRID_SIZE;
-
-const PLOT_WINDOW_HEIGHT: u16 = 600;
-const PLOT_WINDOW_WIDTH: u16 = 800;
-const PLOT_MAX_POINTS: i32 = 1000;
-
-const ENERGY_MAX: f32 = 100.0;
-const PREY_ENERGY_GAIN: f32 = 2.5;
-const PREY_LOSS_FACTOR: f32 = 10;
-const SPLIT_ADD: f32 = 1.0 * DT;
-const DEFAULT_ENERGY_LOSS: f32 = SPLIT_ADD / 5;
-const ENERGY_SCALE_LOSS: f32 = 0.025;
-const DEFAULT_DIGESTION_RATE: f32 = 1;
-const RADIUS: f32 = 4.0;
-const AGENTNO: u16 = 1000;
-const RADIUS2: f32 = RADIUS * RADIUS;
-const SPLIT_MAX: f32 = 100.0;
-const SPLIT_DECAY: f32 = 0.2 * DT;
-const DIGESTION_MAX: f32 = 25;
-const NUMBER_OF_RAYS: usize = 30;
-const VISION_LENGTH: f32 = 300;
-const PREY_FOV: f32 = 360.0 / 180.0 * math.pi;
-const PREDATOR_FOV: f32 = 80.0 / 180.0 * math.pi;
-const FNUMBER_OF_RAYS: f32 = @floatFromInt(NUMBER_OF_RAYS);
-const MOMENTUM: f32 = 0.95;
+const f = @import("array.zig");
 
 const stdout = std.io.getStdOut().writer();
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -63,10 +33,10 @@ pub const Species = enum {
 };
 
 pub const neuralnet = struct {
-    neuronx: @Vector(NUMBER_OF_RAYS, f32),
-    neurony: @Vector(NUMBER_OF_RAYS, f32),
-    vision: @Vector(NUMBER_OF_RAYS, f32),
-    pub fn init(neuronx: @Vector(NUMBER_OF_RAYS, f32), neurony: @Vector(NUMBER_OF_RAYS, f32)) neuralnet {
+    neuronx: @Vector(params.NUMBER_OF_RAYS, f32),
+    neurony: @Vector(params.NUMBER_OF_RAYS, f32),
+    vision: @Vector(params.NUMBER_OF_RAYS, f32),
+    pub fn init(neuronx: @Vector(params.NUMBER_OF_RAYS, f32), neurony: @Vector(params.NUMBER_OF_RAYS, f32)) neuralnet {
         return neuralnet{
             .neuronx = neuronx,
             .neurony = neurony,
@@ -75,30 +45,30 @@ pub const neuralnet = struct {
     }
 };
 
-pub fn update_children(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]f32, theta: *[AGENTNO]f32, energy: *[AGENTNO]f32, split: *[AGENTNO]f32, digestion: *[AGENTNO]f32, species: *[AGENTNO]Species, is_dead: *[AGENTNO]bool, nn: *[AGENTNO]neuralnet) void {
+pub fn update_children(posx: *[params.AGENTNO]f32, posy: *[params.AGENTNO]f32, vel: *[params.AGENTNO]f32, theta: *[params.AGENTNO]f32, energy: *[params.AGENTNO]f32, split: *[params.AGENTNO]f32, digestion: *[params.AGENTNO]f32, species: *[params.AGENTNO]Species, is_dead: *[params.AGENTNO]bool, nn: *[params.AGENTNO]neuralnet) void {
     var index: u32 = 0;
-    for (0..AGENTNO) |i| {
+    for (0..params.AGENTNO) |i| {
         if ((!is_dead[i]) and (species[i] == Species.predator)) {
-            if (split[i] > SPLIT_MAX) {
-                split[i] += -SPLIT_MAX;
-                while (index < AGENTNO - 1) {
+            if (split[i] > params.SPLIT_MAX) {
+                split[i] += -params.SPLIT_MAX;
+                while (index < params.AGENTNO - 1) {
                     if (is_dead[index]) {
                         species[index] = species[i];
                         is_dead[index] = false;
-                        posx[index] = posx[i] + RADIUS;
-                        posy[index] = posy[i] + RADIUS;
+                        posx[index] = posx[i] + params.RADIUS;
+                        posy[index] = posy[i] + params.RADIUS;
                         vel[index] = vel[i];
                         theta[index] = theta[i];
-                        energy[index] = ENERGY_MAX;
+                        energy[index] = params.ENERGY_MAX;
                         split[index] = 0;
                         digestion[index] = 0;
-                        for (0..NUMBER_OF_RAYS) |j| {
-                            if (randomGenerator.float(f32) < 1 / FNUMBER_OF_RAYS) {
+                        for (0..params.NUMBER_OF_RAYS) |j| {
+                            if (randomGenerator.float(f32) < 1 / params.FNUMBER_OF_RAYS) {
                                 nn[index].neuronx[j] = nn[i].neuronx[j] + (randomGenerator.float(f32) - 0.5) / 5;
                             } else {
                                 nn[index].neuronx[j] = nn[i].neuronx[j];
                             }
-                            if (randomGenerator.float(f32) < 1 / FNUMBER_OF_RAYS) {
+                            if (randomGenerator.float(f32) < 1 / params.FNUMBER_OF_RAYS) {
                                 nn[index].neurony[j] = nn[i].neurony[j] + (randomGenerator.float(f32) - 0.5) / 5;
                             } else {
                                 nn[index].neurony[j] = nn[i].neurony[j];
@@ -111,28 +81,28 @@ pub fn update_children(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]
             }
         }
     }
-    for (0..AGENTNO) |i| {
+    for (0..params.AGENTNO) |i| {
         if ((!is_dead[i]) and (species[i] == Species.prey)) {
-            if (split[i] > SPLIT_MAX) {
-                split[i] += -SPLIT_MAX;
-                while (index < AGENTNO - 1) {
+            if (split[i] > params.SPLIT_MAX) {
+                split[i] += -params.SPLIT_MAX;
+                while (index < params.AGENTNO - 1) {
                     if (is_dead[index]) {
                         species[index] = species[i];
                         is_dead[index] = false;
-                        posx[index] = posx[i] + RADIUS;
-                        posy[index] = posy[i] + RADIUS;
+                        posx[index] = posx[i] + params.RADIUS;
+                        posy[index] = posy[i] + params.RADIUS;
                         vel[index] = vel[i];
                         theta[index] = theta[i];
-                        energy[index] = ENERGY_MAX;
+                        energy[index] = params.ENERGY_MAX;
                         split[index] = 0;
                         digestion[index] = 0;
-                        for (0..NUMBER_OF_RAYS) |j| {
-                            if (randomGenerator.float(f32) < 1 / FNUMBER_OF_RAYS) {
+                        for (0..params.NUMBER_OF_RAYS) |j| {
+                            if (randomGenerator.float(f32) < 1 / params.FNUMBER_OF_RAYS) {
                                 nn[index].neuronx[j] = nn[i].neuronx[j] + (randomGenerator.float(f32) - 0.5) / 5;
                             } else {
                                 nn[index].neuronx[j] = nn[i].neuronx[j];
                             }
-                            if (randomGenerator.float(f32) < 1 / FNUMBER_OF_RAYS) {
+                            if (randomGenerator.float(f32) < 1 / params.FNUMBER_OF_RAYS) {
                                 nn[index].neurony[j] = nn[i].neurony[j] + (randomGenerator.float(f32) - 0.5) / 5;
                             } else {
                                 nn[index].neurony[j] = nn[i].neurony[j];
@@ -148,12 +118,12 @@ pub fn update_children(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]
 }
 
 const Context_vision = struct {
-    posx: *[AGENTNO]f32,
-    posy: *[AGENTNO]f32,
-    theta: *[AGENTNO]f32,
-    species: *[AGENTNO]Species,
-    is_dead: *[AGENTNO]bool,
-    nn: *[AGENTNO]neuralnet,
+    posx: *[params.AGENTNO]f32,
+    posy: *[params.AGENTNO]f32,
+    theta: *[params.AGENTNO]f32,
+    species: *[params.AGENTNO]Species,
+    is_dead: *[params.AGENTNO]bool,
+    nn: *[params.AGENTNO]neuralnet,
     start: usize,
     end: usize,
 };
@@ -178,27 +148,27 @@ fn update_vision_chunk(ctx: *Context_vision) void {
         if (ctx.is_dead[i]) continue;
         switch (ctx.species[i]) {
             Species.prey => {
-                step = PREY_FOV / (NUMBER_OF_RAYS - 1);
-                angle = -PREY_FOV / 2;
+                step = params.PREY_FOV / (params.NUMBER_OF_RAYS - 1);
+                angle = -params.PREY_FOV / 2;
             },
             Species.predator => {
-                step = PREDATOR_FOV / (NUMBER_OF_RAYS - 1);
-                angle = -PREDATOR_FOV / 2;
+                step = params.PREDATOR_FOV / (params.NUMBER_OF_RAYS - 1);
+                angle = -params.PREDATOR_FOV / 2;
             },
         }
-        for (0..NUMBER_OF_RAYS) |k| {
-            endpointx = ctx.posx[i] + (VISION_LENGTH * math.cos(angle + ctx.theta[i]));
-            endpointy = ctx.posy[i] + (VISION_LENGTH * math.sin(angle + ctx.theta[i]));
+        for (0..params.NUMBER_OF_RAYS) |k| {
+            endpointx = ctx.posx[i] + (params.VISION_LENGTH * math.cos(angle + ctx.theta[i]));
+            endpointy = ctx.posy[i] + (params.VISION_LENGTH * math.sin(angle + ctx.theta[i]));
             dx = endpointx - ctx.posx[i];
             dy = endpointy - ctx.posy[i];
             t = 100000.0;
-            for (0..AGENTNO) |j| {
+            for (0..params.AGENTNO) |j| {
                 if (ctx.species[i] != ctx.species[j] and (!ctx.is_dead[j])) {
                     fx = ctx.posx[i] - ctx.posx[j];
                     fy = ctx.posy[i] - ctx.posy[j];
                     a = (dx * dx) + (dy * dy);
                     b = 2 * (fx * dx + fy * dy);
-                    ct = (fx * fx + fy * fy) - (RADIUS2);
+                    ct = (fx * fx + fy * fy) - (params.RADIUS2);
                     discriminant = b * b - 4 * a * ct;
                     if (discriminant > 0) {
                         discriminant = math.sqrt(discriminant);
@@ -233,9 +203,9 @@ fn update_vision_chunk(ctx: *Context_vision) void {
     }
 }
 
-pub fn update_vision(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, theta: *[AGENTNO]f32, species: *[AGENTNO]Species, is_dead: *[AGENTNO]bool, nn: *[AGENTNO]neuralnet) !void {
+pub fn update_vision(posx: *[params.AGENTNO]f32, posy: *[params.AGENTNO]f32, theta: *[params.AGENTNO]f32, species: *[params.AGENTNO]Species, is_dead: *[params.AGENTNO]bool, nn: *[params.AGENTNO]neuralnet) !void {
     const num_threads = 4;
-    const chunk_size = AGENTNO / num_threads;
+    const chunk_size = params.AGENTNO / num_threads;
     //const stack_size = 1 * 1; // 64 KB stack size
     var threads: [num_threads]std.Thread = undefined;
     var contexts: [num_threads]Context_vision = undefined;
@@ -249,7 +219,7 @@ pub fn update_vision(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, theta: *[AGENTNO]
             .is_dead = is_dead,
             .nn = nn,
             .start = t * chunk_size,
-            .end = if (t == num_threads - 1) AGENTNO else (t + 1) * chunk_size,
+            .end = if (t == num_threads - 1) params.AGENTNO else (t + 1) * chunk_size,
         };
         threads[t] = try std.Thread.spawn(.{
             //     .stack_size = stack_size
@@ -261,18 +231,18 @@ pub fn update_vision(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, theta: *[AGENTNO]
     }
 }
 
-pub fn update_velocity(vel: *[AGENTNO]f32, theta: *[AGENTNO]f32, energy: *[AGENTNO]f32, species: *[AGENTNO]Species, is_dead: *[AGENTNO]bool, nn: *[AGENTNO]neuralnet) void {
-    var xvec: @Vector(NUMBER_OF_RAYS, f32) = nn[0].vision * nn[0].neuronx;
-    var yvec: @Vector(NUMBER_OF_RAYS, f32) = nn[0].vision * nn[0].neurony;
+pub fn update_velocity(vel: *[params.AGENTNO]f32, theta: *[params.AGENTNO]f32, energy: *[params.AGENTNO]f32, species: *[params.AGENTNO]Species, is_dead: *[params.AGENTNO]bool, nn: *[params.AGENTNO]neuralnet) void {
+    var xvec: @Vector(params.NUMBER_OF_RAYS, f32) = nn[0].vision * nn[0].neuronx;
+    var yvec: @Vector(params.NUMBER_OF_RAYS, f32) = nn[0].vision * nn[0].neurony;
     var dsum: f32 = 0;
     var thetasum: f32 = 0;
-    for (0..AGENTNO) |i| {
+    for (0..params.AGENTNO) |i| {
         if (!is_dead[i]) {
             xvec = nn[i].vision * nn[i].neuronx;
             yvec = nn[i].vision * nn[i].neurony;
             dsum = 0;
             thetasum = 0;
-            for (0..NUMBER_OF_RAYS) |j| {
+            for (0..params.NUMBER_OF_RAYS) |j| {
                 dsum += xvec[j];
                 thetasum += yvec[j];
             }
@@ -282,7 +252,7 @@ pub fn update_velocity(vel: *[AGENTNO]f32, theta: *[AGENTNO]f32, energy: *[AGENT
                 thetasum = 0.2;
             }
             if (vel[i] * vel[i] < 1e-4) {
-                theta[i] += 6.28 / 100.0 * DT;
+                theta[i] += 6.28 / 100.0 * params.DT;
             }
             if (energy[i] == 0) {
                 vel[i] = 0;
@@ -290,45 +260,45 @@ pub fn update_velocity(vel: *[AGENTNO]f32, theta: *[AGENTNO]f32, energy: *[AGENT
                     is_dead[i] = true;
                 }
             } else {
-                vel[i] += dsum * DT;
+                vel[i] += dsum * params.DT;
             }
-            theta[i] += thetasum / 10 * DT;
-            vel[i] = vel[i] * MOMENTUM;
+            theta[i] += thetasum / 10 * params.DT;
+            vel[i] = vel[i] * params.MOMENTUM;
         }
     }
 }
 
-pub fn update_position(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]f32, theta: *[AGENTNO]f32, is_dead: *[AGENTNO]bool) void {
-    for (0..AGENTNO) |i| {
+pub fn update_position(posx: *[params.AGENTNO]f32, posy: *[params.AGENTNO]f32, vel: *[params.AGENTNO]f32, theta: *[params.AGENTNO]f32, is_dead: *[params.AGENTNO]bool) void {
+    for (0..params.AGENTNO) |i| {
         if (!is_dead[i]) {
-            posx[i] += vel[i] * math.cos(theta[i]) * DT;
-            posy[i] += vel[i] * math.sin(theta[i]) * DT;
-            if (posx[i] > GRID_SIZE) {
-                posx[i] += -GRID_SIZE;
+            posx[i] += vel[i] * math.cos(theta[i]) * params.DT;
+            posy[i] += vel[i] * math.sin(theta[i]) * params.DT;
+            if (posx[i] > params.GRID_SIZE) {
+                posx[i] += -params.GRID_SIZE;
             }
             if (posx[i] < 0) {
-                posx[i] += GRID_SIZE;
+                posx[i] += params.GRID_SIZE;
             }
-            if (posy[i] > GRID_SIZE) {
-                posy[i] += -GRID_SIZE;
+            if (posy[i] > params.GRID_SIZE) {
+                posy[i] += -params.GRID_SIZE;
             }
             if (posy[i] < 0) {
-                posy[i] += GRID_SIZE;
+                posy[i] += params.GRID_SIZE;
             }
         }
     }
 }
 
-pub fn update_energy(vel: *[AGENTNO]f32, energy: *[AGENTNO]f32, species: *[AGENTNO]Species, is_dead: *[AGENTNO]bool) void {
-    for (0..AGENTNO) |i| {
+pub fn update_energy(vel: *[params.AGENTNO]f32, energy: *[params.AGENTNO]f32, species: *[params.AGENTNO]Species, is_dead: *[params.AGENTNO]bool) void {
+    for (0..params.AGENTNO) |i| {
         if (!is_dead[i]) {
             switch (species[i]) {
                 // remember that zero is prey
                 Species.prey => {
                     if (vel[i] < 0.001) {
-                        energy[i] += PREY_ENERGY_GAIN;
+                        energy[i] += params.PREY_ENERGY_GAIN;
                     } else {
-                        energy[i] += (-vel[i] * ENERGY_SCALE_LOSS * PREY_LOSS_FACTOR);
+                        energy[i] += (-vel[i] * params.ENERGY_SCALE_LOSS * params.PREY_LOSS_FACTOR);
                         if (energy[i] < 0) {
                             energy[i] = 0;
                         }
@@ -336,9 +306,9 @@ pub fn update_energy(vel: *[AGENTNO]f32, energy: *[AGENTNO]f32, species: *[AGENT
                 },
                 // remember that one is predator
                 Species.predator => {
-                    energy[i] += (-vel[i] * ENERGY_SCALE_LOSS) - DEFAULT_ENERGY_LOSS;
-                    if (energy[i] > ENERGY_MAX) {
-                        energy[i] = ENERGY_MAX;
+                    energy[i] += (-vel[i] * params.ENERGY_SCALE_LOSS) - params.DEFAULT_ENERGY_LOSS;
+                    if (energy[i] > params.ENERGY_MAX) {
+                        energy[i] = params.ENERGY_MAX;
                     }
                 },
             }
@@ -346,28 +316,28 @@ pub fn update_energy(vel: *[AGENTNO]f32, energy: *[AGENTNO]f32, species: *[AGENT
     }
 }
 
-pub fn eats(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]f32, energy: *[AGENTNO]f32, split: *[AGENTNO]f32, digestion: *[AGENTNO]f32, species: *[AGENTNO]Species, is_dead: *[AGENTNO]bool) void {
-    for (0..AGENTNO) |i| {
+pub fn eats(posx: *[params.AGENTNO]f32, posy: *[params.AGENTNO]f32, vel: *[params.AGENTNO]f32, energy: *[params.AGENTNO]f32, split: *[params.AGENTNO]f32, digestion: *[params.AGENTNO]f32, species: *[params.AGENTNO]Species, is_dead: *[params.AGENTNO]bool) void {
+    for (0..params.AGENTNO) |i| {
         if (species[i] == Species.predator) {
             var distance: f32 = 0;
             var xdistance: f32 = 0;
             var ydistance: f32 = 0;
-            for (0..AGENTNO) |j| {
+            for (0..params.AGENTNO) |j| {
                 if ((!is_dead[j]) and (species[j] == Species.prey)) {
                     xdistance = (posx[i] - posx[j]) * (posx[i] - posx[j]);
-                    if (xdistance < 4 * RADIUS2) {
+                    if (xdistance < 4 * params.RADIUS2) {
                         ydistance = (posy[i] - posy[j]) * (posy[i] - posy[j]);
-                        if (ydistance < 4 * RADIUS2) {
+                        if (ydistance < 4 * params.RADIUS2) {
                             distance = xdistance + ydistance;
-                            if (distance < 4 * RADIUS2) {
+                            if (distance < 4 * params.RADIUS2) {
                                 if (digestion[i] == 0) {
                                     is_dead[j] = true;
-                                    energy[i] += ENERGY_MAX / 2;
-                                    if (energy[i] > ENERGY_MAX) {
-                                        energy[i] = ENERGY_MAX;
+                                    energy[i] += params.ENERGY_MAX / 2;
+                                    if (energy[i] > params.ENERGY_MAX) {
+                                        energy[i] = params.ENERGY_MAX;
                                     }
-                                    split[i] += SPLIT_MAX / 2;
-                                    digestion[i] = DIGESTION_MAX;
+                                    split[i] += params.SPLIT_MAX / 2;
+                                    digestion[i] = params.DIGESTION_MAX;
                                     break;
                                 }
                             }
@@ -377,88 +347,88 @@ pub fn eats(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]f32, energy
             }
         }
         if (species[i] == Species.prey) {
-            split[i] += SPLIT_ADD; // (1 + @sqrt(abs(vel[i])));
+            split[i] += params.SPLIT_ADD; // (1 + @sqrt(abs(vel[i])));
             vel[i] += 0;
         }
     }
 }
 
-pub fn update_digestion(digestion: *[AGENTNO]f32) void {
-    for (0..AGENTNO) |i| {
-        digestion[i] += -DEFAULT_DIGESTION_RATE;
+pub fn update_digestion(digestion: *[params.AGENTNO]f32) void {
+    for (0..params.AGENTNO) |i| {
+        digestion[i] += -params.DEFAULT_DIGESTION_RATE;
         if (digestion[i] < 0) {
             digestion[i] = 0;
         }
     }
 }
 
-pub fn update_death(energy: *[AGENTNO]f32, is_dead: *[AGENTNO]bool) void {
-    for (0..AGENTNO) |i| {
+pub fn update_death(energy: *[params.AGENTNO]f32, is_dead: *[params.AGENTNO]bool) void {
+    for (0..params.AGENTNO) |i| {
         if (energy[i] < 0) {
             is_dead[i] = true;
         }
     }
 }
 
-pub fn initialize_posx() [AGENTNO]f32 {
-    var posx: [AGENTNO]f32 = undefined;
-    for (0..AGENTNO) |i| {
-        posx[i] = randomGenerator.float(f32) * GRID_SIZE;
+pub fn initialize_posx() [params.AGENTNO]f32 {
+    var posx: [params.AGENTNO]f32 = undefined;
+    for (0..params.AGENTNO) |i| {
+        posx[i] = randomGenerator.float(f32) * params.GRID_SIZE;
     }
     return posx;
 }
 
-pub fn initialize_posy() [AGENTNO]f32 {
-    var posy: [AGENTNO]f32 = undefined;
-    for (0..AGENTNO) |i| {
-        posy[i] = randomGenerator.float(f32) * GRID_SIZE;
+pub fn initialize_posy() [params.AGENTNO]f32 {
+    var posy: [params.AGENTNO]f32 = undefined;
+    for (0..params.AGENTNO) |i| {
+        posy[i] = randomGenerator.float(f32) * params.GRID_SIZE;
     }
     return posy;
 }
 
-pub fn initialize_vel() [AGENTNO]f32 {
-    var vel: [AGENTNO]f32 = undefined;
-    for (0..AGENTNO) |i| {
+pub fn initialize_vel() [params.AGENTNO]f32 {
+    var vel: [params.AGENTNO]f32 = undefined;
+    for (0..params.AGENTNO) |i| {
         vel[i] = randomGenerator.float(f32);
     }
     return vel;
 }
 
-pub fn initialize_theta() [AGENTNO]f32 {
-    var theta: [AGENTNO]f32 = undefined;
-    for (0..AGENTNO) |i| {
+pub fn initialize_theta() [params.AGENTNO]f32 {
+    var theta: [params.AGENTNO]f32 = undefined;
+    for (0..params.AGENTNO) |i| {
         theta[i] = randomGenerator.float(f32) * math.pi * 2;
     }
     return theta;
 }
 
-pub fn initialize_energy() [AGENTNO]f32 {
-    var energy: [AGENTNO]f32 = undefined;
-    for (0..AGENTNO) |i| {
-        energy[i] = randomGenerator.float(f32) * ENERGY_MAX;
+pub fn initialize_energy() [params.AGENTNO]f32 {
+    var energy: [params.AGENTNO]f32 = undefined;
+    for (0..params.AGENTNO) |i| {
+        energy[i] = randomGenerator.float(f32) * params.ENERGY_MAX;
     }
     return energy;
 }
 
-pub fn initialize_split() [AGENTNO]f32 {
-    var split: [AGENTNO]f32 = undefined;
-    for (0..AGENTNO) |i| {
-        split[i] = randomGenerator.float(f32) * SPLIT_MAX;
+pub fn initialize_split() [params.AGENTNO]f32 {
+    var split: [params.AGENTNO]f32 = undefined;
+    for (0..params.AGENTNO) |i| {
+        split[i] = randomGenerator.float(f32) * params.SPLIT_MAX;
     }
     return split;
 }
 
-pub fn initialize_digestion() [AGENTNO]f32 {
-    var digestion: [AGENTNO]f32 = undefined;
-    for (0..AGENTNO) |i| {
+pub fn initialize_digestion() [params.AGENTNO]f32 {
+    var digestion: [params.AGENTNO]f32 = undefined;
+    for (0..params.AGENTNO) |i| {
         digestion[i] = 0;
     }
     return digestion;
 }
 
-pub fn initialize_species() [AGENTNO]Species {
-    var species: [AGENTNO]Species = undefined;
-    for (0..AGENTNO) |i| {
+pub fn initialize_species() [params.AGENTNO]Species {
+    var species: [params.AGENTNO]Species = undefined;
+    for (0..params.AGENTNO) |i| {
         if (randomGenerator.boolean()) {
             species[i] = Species.prey;
         } else {
@@ -468,21 +438,21 @@ pub fn initialize_species() [AGENTNO]Species {
     return species;
 }
 
-pub fn initialize_is_dead() [AGENTNO]bool {
-    var is_dead: [AGENTNO]bool = undefined;
-    for (0..AGENTNO) |i| {
+pub fn initialize_is_dead() [params.AGENTNO]bool {
+    var is_dead: [params.AGENTNO]bool = undefined;
+    for (0..params.AGENTNO) |i| {
         is_dead[i] = false;
     }
     return is_dead;
 }
 
-pub fn initialize_nn() [AGENTNO]neuralnet {
-    var neuronx: @Vector(NUMBER_OF_RAYS, f32) = undefined;
-    var neurony: @Vector(NUMBER_OF_RAYS, f32) = undefined;
-    var nn: [AGENTNO]neuralnet = undefined;
-    for (0..AGENTNO) |i| {
-        for (0..NUMBER_OF_RAYS) |j| {
-            if (randomGenerator.float(f32) < 0.2 / FNUMBER_OF_RAYS) {
+pub fn initialize_nn() [params.AGENTNO]neuralnet {
+    var neuronx: @Vector(params.NUMBER_OF_RAYS, f32) = undefined;
+    var neurony: @Vector(params.NUMBER_OF_RAYS, f32) = undefined;
+    var nn: [params.AGENTNO]neuralnet = undefined;
+    for (0..params.AGENTNO) |i| {
+        for (0..params.NUMBER_OF_RAYS) |j| {
+            if (randomGenerator.float(f32) < 0.2 / params.FNUMBER_OF_RAYS) {
                 neuronx[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
                 neurony[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
             } else {
@@ -495,7 +465,7 @@ pub fn initialize_nn() [AGENTNO]neuralnet {
     return nn;
 }
 
-pub fn update_agents(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]f32, theta: *[AGENTNO]f32, energy: *[AGENTNO]f32, split: *[AGENTNO]f32, digestion: *[AGENTNO]f32, species: *[AGENTNO]Species, is_dead: *[AGENTNO]bool, nn: *[AGENTNO]neuralnet) !void {
+pub fn update_agents(posx: *[params.AGENTNO]f32, posy: *[params.AGENTNO]f32, vel: *[params.AGENTNO]f32, theta: *[params.AGENTNO]f32, energy: *[params.AGENTNO]f32, split: *[params.AGENTNO]f32, digestion: *[params.AGENTNO]f32, species: *[params.AGENTNO]Species, is_dead: *[params.AGENTNO]bool, nn: *[params.AGENTNO]neuralnet) !void {
     //    const start1 = try std.time.Instant.now();
     //    try update_vision(posx, posy, theta, species, is_dead, nn);
     //    const end1 = try std.time.Instant.now();
@@ -538,7 +508,7 @@ pub fn update_agents(posx: *[AGENTNO]f32, posy: *[AGENTNO]f32, vel: *[AGENTNO]f3
     update_children(posx, posy, vel, theta, energy, split, digestion, species, is_dead, nn);
 }
 //pub const UpdateContext = struct {
-//    array: *[AGENTNO]agent,
+//    array: *[params.AGENTNO]agent,
 //    start: usize,
 //    end: usize,
 //};
