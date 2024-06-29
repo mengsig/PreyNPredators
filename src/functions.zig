@@ -288,20 +288,103 @@ pub const agent = struct {
 pub fn initialize(array: *[params.AGENTNO]agent) void {
     var neuronx: @Vector(params.NUMBER_OF_RAYS, f32) = undefined;
     var neurony: @Vector(params.NUMBER_OF_RAYS, f32) = undefined;
-    for (0..params.AGENTNO) |i| {
-        for (0..params.NUMBER_OF_RAYS) |j| {
-            if (randomGenerator.float(f32) < 0.2 / params.FNUMBER_OF_RAYS) {
-                neuronx[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
-                neurony[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
+    if (params.loadSaveState) {
+        const filePrey: std.fs.File = std.fs.cwd().openFile("prey1_20000_750.txt", .{}) catch |err| {
+            std.debug.print("Failed loading the Prey neurons. Please check and fix the path! {?} \n", .{err});
+            std.c.exit(1);
+        };
+        defer filePrey.close();
+        const filePredator: std.fs.File = std.fs.cwd().openFile("predator1_20000_750.txt", .{}) catch |err| {
+            std.debug.print("Failed loading the Predator neurons. Please check adn fix the path! {?} \n", .{err});
+            std.c.exit(1);
+        };
+        defer filePredator.close();
+        var readerPrey = filePrey.reader();
+        var readerPredator = filePredator.reader();
+
+        var countPreyInFile: u8 = 0;
+        var countPredatorInFile: u8 = 0;
+        var bufPrey: [2048]u8 = undefined;
+        var bufPredator: [2048]u8 = undefined;
+
+        var preyNeuronx: [params.NUMBER_OF_RAYS][params.AGENTNO]f32 = undefined;
+        var predatorNeuronx: [params.NUMBER_OF_RAYS][params.AGENTNO]f32 = undefined;
+        var preyNeurony: [params.NUMBER_OF_RAYS][params.AGENTNO]f32 = undefined;
+        var predatorNeurony: [params.NUMBER_OF_RAYS][params.AGENTNO]f32 = undefined;
+        while (readerPrey.readUntilDelimiterOrEof(&bufPrey, '\n')) |line| {
+            if (line == null) break;
+            const slice: []u8 = line.?;
+            var parts = std.mem.split(u8, slice, ",");
+            while (parts.next()) |tempStr| {
+                const temp: f32 = std.fmt.parseFloat(f32, tempStr) catch 0;
+                if (countPreyInFile % 2 == 0) {
+                    preyNeuronx[countPreyInFile / params.NUMBER_OF_RAYS][countPreyInFile / 2] = temp;
+                } else {
+                    preyNeurony[countPreyInFile / params.NUMBER_OF_RAYS][countPreyInFile / 2] = temp;
+                }
+                countPreyInFile += 1;
+            }
+        } else |err| {
+            std.debug.print("Error reading the Prey file. Error {?} \n", .{err});
+            std.c.exit(1);
+        }
+        std.debug.print("Finished reading prey.\n", .{});
+        while (readerPredator.readUntilDelimiterOrEof(&bufPredator, '\n')) |line| {
+            if (line == null) break;
+            const slice: []u8 = line.?;
+            var parts = std.mem.split(u8, slice, ",");
+            while (parts.next()) |tempStr| {
+                const temp: f32 = std.fmt.parseFloat(f32, tempStr) catch 0;
+                if (countPredatorInFile % 2 == 0) {
+                    predatorNeuronx[countPredatorInFile / params.NUMBER_OF_RAYS][countPredatorInFile / 2] = temp;
+                } else {
+                    predatorNeurony[countPredatorInFile / params.NUMBER_OF_RAYS][countPredatorInFile / 2] = temp;
+                }
+                countPredatorInFile += 1;
+            }
+        } else |err| {
+            std.debug.print("Error reading the Predator file. Error {?} \n", .{err});
+            std.c.exit(1);
+        }
+        std.debug.print("Finished reading predator.\n", .{});
+        std.debug.print("Lines read in Prey file: {}\n", .{countPreyInFile});
+        std.debug.print("Lines read in Predator file: {}\n", .{countPredatorInFile});
+
+        //for (0..params.NUMBER_OF_RAYS) |_| {}
+        for (0..params.AGENTNO) |i| {
+            if (randomGenerator.boolean()) {
+                const saveStatePrey: u8 = randomGenerator.intRangeAtMost(u8, 0, countPreyInFile);
+                for (0..params.NUMBER_OF_RAYS) |j| {
+                    neuronx[j] = preyNeuronx[j][saveStatePrey];
+                    neurony[j] = preyNeurony[j][saveStatePrey];
+                }
+                array[i] = agent.init(Species.prey, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
             } else {
-                neuronx[j] = 0;
-                neurony[j] = 0;
+                const saveStatePredator: u8 = randomGenerator.intRangeAtMost(u8, 0, countPredatorInFile);
+                for (0..params.NUMBER_OF_RAYS) |j| {
+                    neuronx[j] = predatorNeuronx[j][saveStatePredator];
+                    neurony[j] = predatorNeurony[j][saveStatePredator];
+                }
+                array[i] = agent.init(Species.predator, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
             }
         }
-        if (randomGenerator.boolean()) {
-            array[i] = agent.init(Species.prey, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
-        } else {
-            array[i] = agent.init(Species.predator, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
+        std.debug.print("Finished loading save states!", .{});
+    } else {
+        for (0..params.AGENTNO) |i| {
+            if (randomGenerator.boolean()) {
+                for (0..params.NUMBER_OF_RAYS) |j| {
+                    if (randomGenerator.float(f32) < 0.2 / params.FNUMBER_OF_RAYS) {
+                        neuronx[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
+                        neurony[j] = 2 * (randomGenerator.float(f32) - 0.5) * 1;
+                    } else {
+                        neuronx[j] = 0;
+                        neurony[j] = 0;
+                    }
+                }
+                array[i] = agent.init(Species.prey, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
+            } else {
+                array[i] = agent.init(Species.predator, randomGenerator.float(f32) * params.GRID_SIZE, randomGenerator.float(f32) * params.GRID_SIZE, 0.0, 0.0, randomGenerator.float(f32) * params.ENERGY_MAX, randomGenerator.float(f32) * params.SPLIT_MAX, 0.0, false, neuronx, neurony);
+            }
         }
     }
 }

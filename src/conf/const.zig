@@ -6,6 +6,9 @@ pub const SAVE_FREQUENCY = 5000;
 pub const LOOPS = false;
 pub const COPYNUM = 10;
 
+// Load stuff
+pub const loadSaveState: bool = true;
+
 // Simulation stuff
 pub const COOPERATION: bool = false;
 pub const ENERGY_MAX: f32 = 100.0;
