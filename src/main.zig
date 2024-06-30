@@ -142,13 +142,21 @@ pub fn main() !void {
                         preyneuronx = ourArray[i].neuronx;
                         preyneurony = ourArray[i].neurony;
                         for (0..params.NUMBER_OF_RAYS) |j| {
-                            try writerPrey.print("{},{},", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            if (j != params.NUMBER_OF_RAYS - 1) {
+                                try writerPrey.print("{},{},", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            } else {
+                                try writerPrey.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            }
                         }
                     } else {
                         predneuronx = ourArray[i].neuronx;
                         predneurony = ourArray[i].neurony;
                         for (0..params.NUMBER_OF_RAYS) |j| {
-                            try writerPredator.print("{},{},", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            if (j != params.NUMBER_OF_RAYS - 1) {
+                                try writerPredator.print("{},{},", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            } else {
+                                try writerPredator.print("{},{}\n", .{ ourArray[i].neuronx[j], ourArray[i].neurony[j] });
+                            }
                         }
                     }
                 }
